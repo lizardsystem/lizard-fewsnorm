@@ -1,17 +1,9 @@
 # (c) Nelen & Schuurmans.  GPL licensed, see LICENSE.txt.
-# This is an auto-generated Django model module.
-#
-# bin/django inspectdb ----database=fewsnorm
-#
-# You'll have to do the following manually to clean this up:
-#     * Rearrange models' order
-#     * Make sure each model has one field with primary_key=True
-# Feel free to rename the models, but don't rename db_table values or field names.
-#
-# Also note: You'll have to insert the output of 'django-admin.py sqlcustom [appname]'
-# into your database.
 
 from django.contrib.gis.db import models
+from django.db import models
+
+from lizard_geo.models import GeoObject
 
 class GeometryColumns(models.Model):
     f_table_catalog = models.CharField(max_length=256)
@@ -188,3 +180,21 @@ class Users(models.Model):
     class Meta:
         db_table = u'users'
         managed = False
+
+
+class FewsNormSource(models.Model):
+    """
+    Define a source database for fews norm.
+    """
+    name = models.CharField(max_length=128)
+    database_name = models.CharField(max_length=40)
+
+    def __unicode__(self):
+        return '%s (%s)' % (self.name, self.database_name)
+
+
+class GeoLocationCache(GeoObject):
+    """
+    Geo cache for locations from all data sources.
+    """
+    pass

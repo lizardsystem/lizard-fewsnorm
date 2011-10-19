@@ -5,4 +5,6 @@ Changelog of lizard-fewsnorm
 0.1 (unreleased)
 ----------------
 
-- Initial library skeleton created by nensskel.  [your name]
+- Added models for FewsNormSource and GeoLocationCache.
+
+- Initial library skeleton created by nensskel.  [Jack Ha]

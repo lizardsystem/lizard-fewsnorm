@@ -1,0 +1,15 @@
+{# Screen with apps and workspaces on the left and map on the right. #}
+{% extends "lizard_map/wms.html" %}
+{% load workspaces %}
+{% load utility %}
+
+{% block sidebar %}
+<div class="sidebarbox sidebarbox-stretched">
+<h2>fewsnorm</h2>
+fewsnorm inhoud
+</div>
+
+{% workspace_edit view.workspace_edit %}
+{% collage_edit view.collage_edit %}
+
+{% endblock %}

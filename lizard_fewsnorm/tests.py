@@ -9,10 +9,10 @@ class AdapterTest(TestCase):
 
     def setUp(self):
         self.source_db = FewsNormSource(name='test fewsnorm', database_name='fewsnorm')
-        self.source_db.save()
+        self.source_db.using(self.source_db.database_name).save()
 
     def select_locations_test(self):
-        locations = Location.objects.using(self.source_db.database_name).all()
+        locations = Locations.objects.using(self.source_db.database_name).all()
         self.assertNotEqual(len(locations), 0)
 
 

@@ -75,6 +75,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.media",
     "django.core.context_processors.static",
     "django.contrib.messages.context_processors.messages"
+    "django.middleware.transaction.TransactionMiddleware",
     )
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'

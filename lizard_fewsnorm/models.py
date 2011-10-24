@@ -1,8 +1,13 @@
 # (c) Nelen & Schuurmans.  GPL licensed, see LICENSE.txt.
 from django.contrib.gis.db import models
+from django.db import transaction
+from django.contrib.auth.models import User
+from django.template.defaultfilters import slugify
+
 from composite_pk import composite
 
 from lizard_geo.models import GeoObject
+from lizard_geo.models import GeoObjectGroup
 
 
 class Users(models.Model):
@@ -244,6 +249,36 @@ class FewsNormSource(models.Model):
     """
     name = models.CharField(max_length=128)
     database_name = models.CharField(max_length=40)
+
+    def empty_cache(self):
+        GeoLocationCache(fews_norm_source=self.source).delete()
+
+    def source_locations(self):
+        return Location.objects.using(self.source).all()
+
+    def get_or_create_geoobjectgroup(self, user_name):
+
+        geo_object_group, created = GeoObjectGroup.objects.get_or_create(
+            name=self.name, created_by__username=user_name)
+        if created:
+            geo_object_group.name = 'FEWSNORM::%s' % self.source
+            geo_object_group.slug = slugify(geo_object_group.name)
+            geo_object_group.source_log = 'FEWSNORM::%s' % self.source
+            geo_object_group.save()
+        return geo_object_group
+
+    @transaction.commit_on_success
+    def syncronize_cache(self):
+        self.empty_cache(self.source)
+        source_locations = self.source_locations(self.source)
+        for location in source_locations:
+            obj = GeoLocationCache()
+            obj.ident = location.id
+            obj.name = location.name
+            obj.shortname = location.shortname
+            obj.geo_object_group = self.get_or_create_geoobjectgroep(source)
+            obj.geometry = None
+
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)

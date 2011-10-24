@@ -17,6 +17,7 @@ install_requires = [
     'lizard-map >= 3.2',
     'lizard-geo',
     'pkginfo',
+    'django-compositepk',
     ],
 
 tests_require = [

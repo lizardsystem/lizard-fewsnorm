@@ -29,18 +29,28 @@ DATABASES = {
     # the specified database exists. When the tests cannot run, Jenkins sees
     # that as an error.
     'default': {
-        'NAME': os.path.join(BUILDOUT_DIR, 'var', 'sqlite', 'test.db'),
-        'ENGINE': 'django.db.backends.sqlite3',
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',  # empty string for localhost.
+        'NAME': 'lizard-fewsnorm',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'USER': 'buildout',
+        'PASSWORD': 'buildout',
+        'HOST': 'localhost',  # empty string for localhost.
+        'PORT': '',  # empty string for default.
+        },
+    'fewsnorm': {
+        'NAME': 'fewsnorm',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'USER': 'buildout',
+        'PASSWORD': 'buildout',
+        'HOST': 'localhost',  # empty string for localhost.
         'PORT': '',  # empty string for default.
         }
     }
+
 SITE_ID = 1
 INSTALLED_APPS = [
     'lizard_fewsnorm',
     'lizard_ui',
+    'composite_pk',
     'staticfiles',
     'compressor',
     'south',

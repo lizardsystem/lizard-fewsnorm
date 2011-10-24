@@ -1,46 +1,61 @@
 # (c) Nelen & Schuurmans.  GPL licensed, see LICENSE.txt.
-
 from django.contrib.gis.db import models
-from django.db import models
+from composite_pk import composite
 
 from lizard_geo.models import GeoObject
 
-class GeometryColumns(models.Model):
-    f_table_catalog = models.CharField(max_length=256)
-    f_table_schema = models.CharField(max_length=256)
-    f_table_name = models.CharField(max_length=256)
-    f_geometry_column = models.CharField(max_length=256)
-    coord_dimension = models.IntegerField()
-    srid = models.IntegerField()
-    type = models.CharField(max_length=30)
+
+class Users(models.Model):
+    userkey = models.IntegerField(primary_key=True,
+                                  db_column='userkey')
+    id = models.CharField(unique=True, max_length=64)
+    name = models.CharField(max_length=64, blank=True, null=True)
     class Meta:
-        db_table = u'geometry_columns'
+        db_table = u'users'
         managed = False
 
-class GeographyColumns(models.Model):
-    f_table_catalog = models.TextField() # This field type is a guess.
-    f_table_schema = models.TextField() # This field type is a guess.
-    f_table_name = models.TextField() # This field type is a guess.
-    f_geography_column = models.TextField() # This field type is a guess.
-    coord_dimension = models.IntegerField()
-    srid = models.IntegerField()
-    type = models.TextField()
-    class Meta:
-        db_table = u'geography_columns'
-        managed = False
 
-class SpatialRefSys(models.Model):
-    srid = models.IntegerField(primary_key=True)
-    auth_name = models.CharField(max_length=256)
-    auth_srid = models.IntegerField()
-    srtext = models.CharField(max_length=2048)
-    proj4text = models.CharField(max_length=2048)
-    class Meta:
-        db_table = u'spatial_ref_sys'
-        managed = False
+# class GeometryColumns(models.Model):
+#     f_table_catalog = models.CharField(max_length=256)
+#     f_table_schema = models.CharField(max_length=256)
+#     f_table_name = models.CharField(max_length=256)
+#     f_geometry_column = models.CharField(max_length=256)
+#     coord_dimension = models.IntegerField()
+#     srid = models.IntegerField()
+#     type = models.CharField(max_length=30)
+#     class Meta:
+#         db_table = u'geometry_columns'
+#         managed = False
 
-class Parametergroups(models.Model):
-    groupkey = models.IntegerField(primary_key=True)
+
+# class GeographyColumns(models.Model):
+#     f_table_catalog = models.TextField() # This field type is a guess.
+#     f_table_schema = models.TextField() # This field type is a guess.
+#     f_table_name = models.TextField() # This field type is a guess.
+#     f_geography_column = models.TextField() # This field type is a guess.
+#     coord_dimension = models.IntegerField()
+#     srid = models.IntegerField()
+#     type = models.TextField()
+#     class Meta:
+#         db_table = u'geography_columns'
+#         managed = False
+
+
+# class SpatialRefSys(models.Model):
+#     srid = models.IntegerField(primary_key=True,
+#                                db_column='srid')
+#     auth_name = models.CharField(max_length=256)
+#     auth_srid = models.IntegerField()
+#     srtext = models.CharField(max_length=2048)
+#     proj4text = models.CharField(max_length=2048)
+#     class Meta:
+#         db_table = u'spatial_ref_sys'
+#         managed = False
+
+
+class ParameterGroups(models.Model):
+    groupkey = models.IntegerField(primary_key=True,
+                                   db_column='groupkey')
     id = models.CharField(unique=True, max_length=64)
     name = models.CharField(max_length=64)
     description = models.CharField(max_length=64)
@@ -51,16 +66,10 @@ class Parametergroups(models.Model):
         db_table = u'parametergroups'
         managed = False
 
-class Qualifiers(models.Model):
-    qualifierkey = models.IntegerField(primary_key=True)
-    id = models.CharField(unique=True, max_length=64)
-    description = models.CharField(max_length=64)
-    class Meta:
-        db_table = u'qualifiers'
-        managed = False
 
 class Locations(models.Model):
-    locationkey = models.IntegerField(primary_key=True)
+    locationkey = models.IntegerField(primary_key=True,
+                                      db_column='locationkey')
     id = models.CharField(unique=True, max_length=64)
     name = models.CharField(max_length=64)
     shortname = models.CharField(max_length=64)
@@ -82,9 +91,12 @@ class Locations(models.Model):
         db_table = u'locations'
         managed = False
 
+
 class Parameters(models.Model):
-    parameterkey = models.IntegerField(primary_key=True)
-    groupkey = models.ForeignKey(Parametergroups, db_column='groupkey')
+    parameterkey = models.IntegerField(primary_key=True,
+                                       db_column='parameterkey')
+    groupkey = models.ForeignKey(ParameterGroups,
+                                 db_column='groupkey')
     id = models.CharField(max_length=64)
     name = models.CharField(max_length=64)
     shortname = models.CharField(max_length=64)
@@ -96,19 +108,44 @@ class Parameters(models.Model):
         db_table = u'parameters'
         managed = False
 
-class Qualifiersets(models.Model):
-    qualifiersetkey = models.IntegerField(primary_key=True)
+
+class Qualifiers(models.Model):
+    qualifierkey = models.IntegerField(primary_key=True,
+                                       db_column='qualifierkey')
     id = models.CharField(unique=True, max_length=64)
-    qualifierkey1 = models.ForeignKey(Qualifiers, db_column='qualifierkey1')
-    qualifierkey2 = models.ForeignKey(Qualifiers, db_column='qualifierkey2')
-    qualifierkey3 = models.ForeignKey(Qualifiers, db_column='qualifierkey3')
-    qualifierkey4 = models.ForeignKey(Qualifiers, db_column='qualifierkey4')
+    description = models.CharField(max_length=64)
+    class Meta:
+        db_table = u'qualifiers'
+        managed = False
+
+
+class QualifierSets(models.Model):
+    qualifiersetkey = models.IntegerField(primary_key=True,
+                                          db_column='qualifiersetkey')
+    id = models.CharField(unique=True, max_length=64)
+    qualifierkey1 = models.ForeignKey(Qualifiers,
+                                      db_column='qualifierkey1',
+                                      related_name='qualifierkey1')
+    qualifierkey2 = models.ForeignKey(Qualifiers,
+                                      db_column='qualifierkey2',
+                                      related_name='qualifierkey2',
+                                      blank=True, null=True)
+    qualifierkey3 = models.ForeignKey(Qualifiers,
+                                      db_column='qualifierkey3',
+                                      related_name='qualifierkey3',
+                                      blank=True, null=True)
+    qualifierkey4 = models.ForeignKey(Qualifiers,
+                                      related_name='qualifierkey4',
+                                      db_column='qualifierkey4',
+                                      blank=True, null=True)
     class Meta:
         db_table = u'qualifiersets'
         managed = False
 
-class Moduleinstances(models.Model):
-    moduleinstancekey = models.IntegerField(primary_key=True)
+
+class ModuleInstances(models.Model):
+    moduleinstancekey = models.IntegerField(primary_key=True,
+                                            db_column='moduleinstancekey')
     id = models.CharField(unique=True, max_length=64)
     name = models.CharField(max_length=64)
     description = models.CharField(max_length=64)
@@ -116,69 +153,88 @@ class Moduleinstances(models.Model):
         db_table = u'moduleinstances'
         managed = False
 
+
 class Timesteps(models.Model):
-    timestepkey = models.IntegerField(primary_key=True)
+    timestepkey = models.IntegerField(primary_key=True,
+                                      db_column='timestepkey')
     id = models.CharField(unique=True, max_length=64)
     description = models.CharField(max_length=64)
     class Meta:
         db_table = u'timesteps'
         managed = False
 
-class Aggregationperiods(models.Model):
-    aggregationperiodkey = models.IntegerField(primary_key=True)
+
+class AggregationPeriods(models.Model):
+    aggregationperiodkey = models.IntegerField(primary_key=True,
+                                               db_column='aggregationperiodkey')
     id = models.CharField(unique=True, max_length=64)
     description = models.CharField(max_length=64)
     class Meta:
         db_table = u'aggregationperiods'
         managed = False
 
-class Timeseriesvaluesandflags(models.Model):
-    serieskey = models.ForeignKey(Timeserieskeys, db_column='serieskey')
-    datetime = models.DateTimeField()
+
+class TimeseriesKeys(models.Model):
+    serieskey = models.IntegerField(primary_key=True,
+                                    db_column='serieskey')
+    locationkey = models.ForeignKey(Locations,
+                                    db_column='locationkey')
+    parameterkey = models.ForeignKey(Parameters,
+                                     db_column='parameterkey')
+    qualifiersetkey = models.ForeignKey(QualifierSets,
+                                        db_column='qualifiersetkey',
+                                        blank=True, null=True)
+    moduleinstancekey = models.ForeignKey(ModuleInstances,
+                                          db_column='moduleinstancekey',
+                                          blank=True, null=True)
+    timestepkey = models.ForeignKey(Timesteps,
+                                    db_column='timestepkey',
+                                    blank=True, null=True)
+    aggregationperiodkey = models.ForeignKey(AggregationPeriods,
+                                             db_column='aggregationperiodkey',
+                                             blank=True, null=True)
+    class Meta:
+        db_table = u'timeserieskeys'
+        managed = False
+
+
+class TimeseriesValuesAndFlags(composite.CompositePKModel):
+    serieskey = models.ForeignKey(TimeseriesKeys,
+                                  primary_key=True,
+                                  db_column='serieskey')
+    datetime = models.DateTimeField(primary_key=True)
     scalarvalue = models.FloatField()
     flags = models.IntegerField()
     class Meta:
         db_table = u'timeseriesvaluesandflags'
         managed = False
 
-class Timeseriescomments(models.Model):
-    serieskey = models.ForeignKey(Timeserieskeys, db_column='serieskey')
-    datetime = models.DateTimeField()
+
+class TimeseriesComments(models.Model):
+    serieskey = models.ForeignKey(TimeseriesKeys,
+                                  primary_key=True,
+                                  db_column='serieskey',
+                                  blank=True, null=True)
+    datetime = models.DateTimeField(primary_key=True)
     comments = models.CharField(max_length=64)
     class Meta:
         db_table = u'timeseriescomments'
         managed = False
 
-class Timeserieskeys(models.Model):
-    serieskey = models.IntegerField(primary_key=True)
-    locationkey = models.ForeignKey(Locations, db_column='locationkey')
-    parameterkey = models.ForeignKey(Parameters, db_column='parameterkey')
-    qualifiersetkey = models.ForeignKey(Qualifiersets, db_column='qualifiersetkey')
-    moduleinstancekey = models.ForeignKey(Moduleinstances, db_column='moduleinstancekey')
-    timestepkey = models.ForeignKey(Timesteps, db_column='timestepkey')
-    aggregationperiodkey = models.ForeignKey(Aggregationperiods, db_column='aggregationperiodkey')
-    class Meta:
-        db_table = u'timeserieskeys'
-        managed = False
 
-class Timeseriesmanualeditshistory(models.Model):
-    serieskey = models.ForeignKey(Timeserieskeys, db_column='serieskey')
-    editdatetime = models.DateTimeField()
+class TimeseriesManualEditsHistory(models.Model):
+    serieskey = models.ForeignKey(TimeseriesKeys,
+                                  primary_key=True,
+                                  db_column='serieskey')
+    editdatetime = models.DateTimeField(primary_key=True)
     datetime = models.DateTimeField()
-    userkey = models.ForeignKey(Users, db_column='userkey')
+    userkey = models.ForeignKey(Users, db_column='userkey',
+                                blank=True, null=True)
     scalarvalue = models.FloatField()
     flags = models.IntegerField()
     comments = models.CharField(max_length=64)
     class Meta:
         db_table = u'timeseriesmanualeditshistory'
-        managed = False
-
-class Users(models.Model):
-    userkey = models.IntegerField(primary_key=True)
-    id = models.CharField(unique=True, max_length=64)
-    name = models.CharField(max_length=64)
-    class Meta:
-        db_table = u'users'
         managed = False
 
 
@@ -197,4 +253,9 @@ class GeoLocationCache(GeoObject):
     """
     Geo cache for locations from all data sources.
     """
-    pass
+    fews_norm_source = models.ForeignKey(FewsNormSource)
+    name = models.CharField(max_length=64)
+    shortname = models.CharField(max_length=64)
+
+    def __unicode__(self):
+        return self.name

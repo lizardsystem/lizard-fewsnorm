@@ -279,7 +279,6 @@ class FewsNormSource(models.Model):
             obj.geo_object_group = self.get_or_create_geoobjectgroep(source)
             obj.geometry = None
 
-
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)
 

@@ -10,6 +10,7 @@ class Users(models.Model):
                                   db_column='userkey')
     id = models.CharField(unique=True, max_length=64)
     name = models.CharField(max_length=64, blank=True, null=True)
+
     class Meta:
         db_table = u'users'
         managed = False
@@ -62,6 +63,7 @@ class ParameterGroups(models.Model):
     parametertype = models.CharField(max_length=64)
     unit = models.CharField(max_length=64)
     displayunit = models.CharField(max_length=64)
+
     class Meta:
         db_table = u'parametergroups'
         managed = False
@@ -87,6 +89,7 @@ class Locations(models.Model):
     relationblocationid = models.CharField(max_length=64)
     attributea = models.CharField(max_length=64)
     attributeb = models.FloatField()
+
     class Meta:
         db_table = u'locations'
         managed = False
@@ -104,9 +107,13 @@ class Parameters(models.Model):
     valueresolution = models.FloatField()
     attributea = models.CharField(max_length=64)
     attributeb = models.FloatField()
+
     class Meta:
         db_table = u'parameters'
         managed = False
+
+    def __unicode__(self):
+        return self.name
 
 
 class Qualifiers(models.Model):
@@ -114,6 +121,7 @@ class Qualifiers(models.Model):
                                        db_column='qualifierkey')
     id = models.CharField(unique=True, max_length=64)
     description = models.CharField(max_length=64)
+
     class Meta:
         db_table = u'qualifiers'
         managed = False
@@ -138,6 +146,7 @@ class QualifierSets(models.Model):
                                       related_name='qualifierkey4',
                                       db_column='qualifierkey4',
                                       blank=True, null=True)
+
     class Meta:
         db_table = u'qualifiersets'
         managed = False
@@ -149,6 +158,7 @@ class ModuleInstances(models.Model):
     id = models.CharField(unique=True, max_length=64)
     name = models.CharField(max_length=64)
     description = models.CharField(max_length=64)
+
     class Meta:
         db_table = u'moduleinstances'
         managed = False
@@ -159,16 +169,19 @@ class Timesteps(models.Model):
                                       db_column='timestepkey')
     id = models.CharField(unique=True, max_length=64)
     description = models.CharField(max_length=64)
+
     class Meta:
         db_table = u'timesteps'
         managed = False
 
 
 class AggregationPeriods(models.Model):
-    aggregationperiodkey = models.IntegerField(primary_key=True,
-                                               db_column='aggregationperiodkey')
+    aggregationperiodkey = models.IntegerField(
+        primary_key=True,
+        db_column='aggregationperiodkey')
     id = models.CharField(unique=True, max_length=64)
     description = models.CharField(max_length=64)
+
     class Meta:
         db_table = u'aggregationperiods'
         managed = False
@@ -193,6 +206,7 @@ class TimeseriesKeys(models.Model):
     aggregationperiodkey = models.ForeignKey(AggregationPeriods,
                                              db_column='aggregationperiodkey',
                                              blank=True, null=True)
+
     class Meta:
         db_table = u'timeserieskeys'
         managed = False
@@ -205,6 +219,7 @@ class TimeseriesValuesAndFlags(composite.CompositePKModel):
     datetime = models.DateTimeField(primary_key=True)
     scalarvalue = models.FloatField()
     flags = models.IntegerField()
+
     class Meta:
         db_table = u'timeseriesvaluesandflags'
         managed = False
@@ -217,6 +232,7 @@ class TimeseriesComments(models.Model):
                                   blank=True, null=True)
     datetime = models.DateTimeField(primary_key=True)
     comments = models.CharField(max_length=64)
+
     class Meta:
         db_table = u'timeseriescomments'
         managed = False
@@ -233,20 +249,30 @@ class TimeseriesManualEditsHistory(models.Model):
     scalarvalue = models.FloatField()
     flags = models.IntegerField()
     comments = models.CharField(max_length=64)
+
     class Meta:
         db_table = u'timeseriesmanualeditshistory'
         managed = False
 
+
+# Managed models that are in the default database.
 
 class FewsNormSource(models.Model):
     """
     Define a source database for fews norm.
     """
     name = models.CharField(max_length=128)
+    slug = models.SlugField()
     database_name = models.CharField(max_length=40)
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)
+
+    def model_object(self, model_object):
+        """
+        Return Model using database_name.
+        """
+        return model_object.objects.using(self.database_name)
 
 
 class GeoLocationCache(GeoObject):

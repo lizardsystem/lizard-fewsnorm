@@ -1,0 +1,30 @@
+{# Screen with apps and workspaces on the left and map on the right. #}
+{% extends "lizard_map/wms.html" %}
+{% load workspaces %}
+{% load utility %}
+
+{% block sidebar %}
+<div class="sidebarbox sidebarbox-stretched automatic-tree filetree pane">
+  <h2>fewsnorm</h2>
+  <ul>
+    {% for parameter in view.parameters %}
+    <li class="workspace-acceptable file"
+        data-name="{{ view.fews_norm_source.name }} - {{ parameter.id }}"
+        data-adapter-class="adapter_fewsnorm"
+        data-adapter-layer-json='{"fews_norm_source_slug":"{{ view.fews_norm_source_slug }}", "parameter":"{{ parameter.parameterkey }}", "moduleinstance": ""}'
+        >Parameter {{ parameter.id }}</li>
+    {% endfor %}
+    {% for module in view.modules %}
+    <li class="workspace-acceptable file"
+        data-name="{{ view.fews_norm_source.name }} - {{ module.id }}"
+        data-adapter-class="adapter_fewsnorm"
+        data-adapter-layer-json='{"fews_norm_source_slug":"{{ view.fews_norm_source_slug }}", "parameter":"", "moduleinstance": "{{ module.id }}"}'
+        >Module {{ module.id }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% workspace_edit view.workspace_edit %}
+{% collage_edit view.collage_edit %}
+
+{% endblock %}

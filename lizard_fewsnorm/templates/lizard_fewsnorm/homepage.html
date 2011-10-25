@@ -4,9 +4,18 @@
 {% load utility %}
 
 {% block sidebar %}
-<div class="sidebarbox sidebarbox-stretched">
-<h2>fewsnorm</h2>
-fewsnorm inhoud
+<div id="iconbox" class="sidebarbox sidebarbox-stretched iconlist">
+<h2>fewsnorm bronnen</h2>
+<ul>
+  {% for fews_norm_source in view.fews_norm_sources %}
+  <li>
+    <a href="{% url lizard_fewsnorm_source fews_norm_source_slug=fews_norm_source.slug %}">
+      <img src="{{ STATIC_URL }}lizard_ui/app_icons/meetgegevens.png" />
+      <div>{{ fews_norm_source.name }}</div>
+    </a>
+  </li>
+{% endfor %}
+</ul>
 </div>
 
 {% workspace_edit view.workspace_edit %}

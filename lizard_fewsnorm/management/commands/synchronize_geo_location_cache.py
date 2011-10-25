@@ -18,7 +18,7 @@ class Command(BaseCommand):
     """
 
     help = ("Example: bin/django synchronize_geo_location_cache "\
-            "--source fewsnorm1 ")
+            "--source=fewsnorm1 --user_name=buildout")
 
     option_list = BaseCommand.option_list + (
         make_option('--source',

@@ -1,13 +1,20 @@
 # (c) Nelen & Schuurmans.  GPL licensed, see LICENSE.txt.
 from django.contrib.gis.db import models
-from django.db import transaction
 from django.contrib.auth.models import User
 from django.template.defaultfilters import slugify
+from django.contrib.gis.geos import GEOSGeometry
+from django.db import transaction
+from django.contrib.gis.geos import Point
 
 from composite_pk import composite
 
 from lizard_geo.models import GeoObject
 from lizard_geo.models import GeoObjectGroup
+
+from lizard_map.coordinates import rd_to_wgs84
+
+import logging
+log = logging.getLogger("lizard-fewsnorm.models")
 
 
 class Users(models.Model):
@@ -270,34 +277,41 @@ class FewsNormSource(models.Model):
     slug = models.SlugField()
     database_name = models.CharField(max_length=40)
 
-    def empty_cache(self):
-        GeoLocationCache(fews_norm_source=self.source).delete()
+    def _empty_cache(self):
+        log.debug('Empty GeoLocationCache for fewsnorm %s...', self.name)
+        self.geolocationcache_set.all().delete()
 
     def source_locations(self):
-        return Location.objects.using(self.source).all()
+        return Locations.objects.using(self.database_name).all()
 
     def get_or_create_geoobjectgroup(self, user_name):
-
+        user_obj = User.objects.get(username=user_name)
+        group_name = 'FEWSNORM::%s' % self.database_name
+        group_slug = slugify(group_name)
         geo_object_group, created = GeoObjectGroup.objects.get_or_create(
-            name=self.name, created_by__username=user_name)
+            name=group_name, slug=group_slug, created_by=user_obj)
         if created:
-            geo_object_group.name = 'FEWSNORM::%s' % self.source
-            geo_object_group.slug = slugify(geo_object_group.name)
-            geo_object_group.source_log = 'FEWSNORM::%s' % self.source
+            geo_object_group.source_log = 'FEWSNORM::%s' % self.database_name
             geo_object_group.save()
         return geo_object_group
 
     @transaction.commit_on_success
-    def syncronize_cache(self):
-        self.empty_cache(self.source)
-        source_locations = self.source_locations(self.source)
+    def synchronize_cache(self, user_name):
+        self._empty_cache()
+        source_locations = self.source_locations()
+        geo_object_group = self.get_or_create_geoobjectgroup(user_name)
+        log.debug('Creating GeoLocationCache for fewsnorm %s...', self.name)
         for location in source_locations:
             obj = GeoLocationCache()
-            obj.ident = location.id
-            obj.name = location.name
-            obj.shortname = location.shortname
-            obj.geo_object_group = self.get_or_create_geoobjectgroep(source)
-            obj.geometry = None
+            obj.ident = location.id[:80]
+            obj.fews_norm_source = self
+            obj.name = '%s' % location.name
+            obj.shortname = '%s' % location.shortname
+            obj.geo_object_group = geo_object_group
+            wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
+            obj.geometry =  GEOSGeometry(Point(wgs84_x, wgs84_y),
+                                         srid=4326)
+            obj.save()
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)

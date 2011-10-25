@@ -11,14 +11,14 @@
     <li class="workspace-acceptable file"
         data-name="{{ view.fews_norm_source.name }} - {{ parameter.id }}"
         data-adapter-class="adapter_fewsnorm"
-        data-adapter-layer-json='{"fews_norm_source_slug":"{{ view.fews_norm_source_slug }}", "parameter":"{{ parameter.parameterkey }}", "moduleinstance": ""}'
+        data-adapter-layer-json='{"fews_norm_source_slug":"{{ view.fews_norm_source.slug }}", "parameter_id":"{{ parameter.id }}", "module_id": ""}'
         >Parameter {{ parameter.id }}</li>
     {% endfor %}
     {% for module in view.modules %}
     <li class="workspace-acceptable file"
         data-name="{{ view.fews_norm_source.name }} - {{ module.id }}"
         data-adapter-class="adapter_fewsnorm"
-        data-adapter-layer-json='{"fews_norm_source_slug":"{{ view.fews_norm_source_slug }}", "parameter":"", "moduleinstance": "{{ module.id }}"}'
+        data-adapter-layer-json='{"fews_norm_source_slug":"{{ view.fews_norm_source.slug }}", "parameter_id":"", "module_id": "{{ module.id }}"}'
         >Module {{ module.id }}</li>
     {% endfor %}
   </ul>

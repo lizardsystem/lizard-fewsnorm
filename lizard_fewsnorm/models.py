@@ -125,7 +125,7 @@ class Parameters(models.Model):
         managed = False
 
     def __unicode__(self):
-        return self.name
+        return '%s' % self.id
 
 
 class Qualifiers(models.Model):
@@ -269,6 +269,36 @@ class TimeseriesManualEditsHistory(models.Model):
 
 # Managed models that are in the default database.
 
+class ParameterCache(models.Model):
+    ident = models.CharField(max_length=64)
+
+    def __unicode__(self):
+        return '%s' % self.ident
+
+
+class ModuleCache(models.Model):
+    ident = models.CharField(max_length=64)
+
+    def __unicode__(self):
+        return '%s' % self.ident
+
+
+class GeoLocationCache(GeoObject):
+    """
+    Geo cache for locations from all data sources.
+    """
+    fews_norm_source = models.ForeignKey('FewsNormSource')
+    name = models.CharField(max_length=64)
+    shortname = models.CharField(max_length=64)
+    parameter = models.ManyToManyField(
+        ParameterCache, null=True, blank=True)
+    module = models.ManyToManyField(
+        ModuleCache, null=True, blank=True)
+
+    def __unicode__(self):
+        return '%s %s ' % (self.fews_norm_source, self.ident)
+
+
 class FewsNormSource(models.Model):
     """
     Define a source database for fews norm.
@@ -297,20 +327,46 @@ class FewsNormSource(models.Model):
 
     @transaction.commit_on_success
     def synchronize_cache(self, user_name):
-        self._empty_cache()
+        """
+        Fill GeoLocationCache, ParameterCache and ModuleCache.
+        """
+        parameters = {}
+        log.debug('Creating ParameterCache for fewsnorm %s...', self.name)
+        for parameter in Parameters.objects.all():
+            parameter_cache, _ = ParameterCache.objects.get_or_create(
+                ident=parameter.id)
+            parameters[parameter_cache.ident] = parameter_cache
+
+        modules = {}
+        log.debug('Creating ModuleCache for fewsnorm %s...', self.name)
+        for module in ModuleInstances.objects.all():
+            module_cache, _ = ModuleCache.objects.get_or_cretae(
+                ident=module.id)
+            modules[module_cache.ident] = module_cache
+
+        self._empty_cache()  # For GeoLocationCache
         source_locations = self.source_locations()
         geo_object_group = self.get_or_create_geoobjectgroup(user_name)
         log.debug('Creating GeoLocationCache for fewsnorm %s...', self.name)
         for location in source_locations:
+            logger.debug('processing location.id: %s' % location.id)
             obj = GeoLocationCache()
             obj.ident = location.id[:80]
             obj.fews_norm_source = self
             obj.name = '%s' % location.name
             obj.shortname = '%s' % location.shortname
+            # obj.parameter_id = '%s' % location.parameterkey
             obj.geo_object_group = geo_object_group
             wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
             obj.geometry =  GEOSGeometry(Point(wgs84_x, wgs84_y),
                                          srid=4326)
+            # obj.geometry =  GEOSGeometry(Point(location.x, location.y),
+            #                              srid=28992)
+            for timeserieskeys in obj.timeserieskeys_set.all():
+                obj.parameter_set.get_or_create(
+                    ident=timeserieskeys.parameterkey.ident)
+                obj.module_set.get_or_create(
+                    ident=timeserieskeys.moduleinstancekey.ident)
             obj.save()
 
     def __unicode__(self):
@@ -321,15 +377,3 @@ class FewsNormSource(models.Model):
         Return Model using database_name.
         """
         return model_object.objects.using(self.database_name)
-
-
-class GeoLocationCache(GeoObject):
-    """
-    Geo cache for locations from all data sources.
-    """
-    fews_norm_source = models.ForeignKey(FewsNormSource)
-    name = models.CharField(max_length=64)
-    shortname = models.CharField(max_length=64)
-
-    def __unicode__(self):
-        return self.name

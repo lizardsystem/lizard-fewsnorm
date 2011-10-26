@@ -14,7 +14,7 @@ from lizard_geo.models import GeoObjectGroup
 from lizard_map.coordinates import rd_to_wgs84
 
 import logging
-log = logging.getLogger("lizard-fewsnorm.models")
+logger = logging.getLogger("lizard-fewsnorm.models")
 
 
 class Users(models.Model):
@@ -308,7 +308,7 @@ class FewsNormSource(models.Model):
     database_name = models.CharField(max_length=40)
 
     def _empty_cache(self):
-        log.debug('Empty GeoLocationCache for fewsnorm %s...', self.name)
+        logger.debug('Empty GeoLocationCache for fewsnorm %s...', self.name)
         self.geolocationcache_set.all().delete()
 
     def source_locations(self):
@@ -330,24 +330,24 @@ class FewsNormSource(models.Model):
         """
         Fill GeoLocationCache, ParameterCache and ModuleCache.
         """
-        parameters = {}
-        log.debug('Creating ParameterCache for fewsnorm %s...', self.name)
-        for parameter in Parameters.objects.all():
-            parameter_cache, _ = ParameterCache.objects.get_or_create(
-                ident=parameter.id)
-            parameters[parameter_cache.ident] = parameter_cache
+        # parameters = {}
+        # logger.debug('Creating ParameterCache for fewsnorm %s...', self.name)
+        # for parameter in Parameters.objects.all():
+        #     parameter_cache, _ = ParameterCache.objects.get_or_create(
+        #         ident=parameter.id)
+        #     parameters[parameter_cache.ident] = parameter_cache
 
-        modules = {}
-        log.debug('Creating ModuleCache for fewsnorm %s...', self.name)
-        for module in ModuleInstances.objects.all():
-            module_cache, _ = ModuleCache.objects.get_or_cretae(
-                ident=module.id)
-            modules[module_cache.ident] = module_cache
+        # modules = {}
+        # logger.debug('Creating ModuleCache for fewsnorm %s...', self.name)
+        # for module in ModuleInstances.objects.all():
+        #     module_cache, _ = ModuleCache.objects.get_or_cretae(
+        #         ident=module.id)
+        #     modules[module_cache.ident] = module_cache
 
         self._empty_cache()  # For GeoLocationCache
         source_locations = self.source_locations()
         geo_object_group = self.get_or_create_geoobjectgroup(user_name)
-        log.debug('Creating GeoLocationCache for fewsnorm %s...', self.name)
+        logger.debug('Creating GeoLocationCache for fewsnorm %s...', self.name)
         for location in source_locations:
             logger.debug('processing location.id: %s' % location.id)
             obj = GeoLocationCache()
@@ -363,11 +363,11 @@ class FewsNormSource(models.Model):
             # obj.geometry =  GEOSGeometry(Point(location.x, location.y),
             #                              srid=28992)
             obj.save()
-            for timeserieskeys in obj.timeserieskeys_set.all():
-                obj.parameter_set.get_or_create(
-                    ident=timeserieskeys.parameterkey.ident)
-                obj.module_set.get_or_create(
-                    ident=timeserieskeys.moduleinstancekey.ident)
+            # for timeserieskeys in obj.timeserieskeys_set.all():
+            #     obj.parameter_set.get_or_create(
+            #         ident=timeserieskeys.parameterkey.ident)
+            #     obj.module_set.get_or_create(
+            #         ident=timeserieskeys.moduleinstancekey.ident)
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)

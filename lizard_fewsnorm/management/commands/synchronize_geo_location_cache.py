@@ -25,7 +25,7 @@ class Command(BaseCommand):
                     help='name of fewsnorm database, optionally',
                     type='str',
                     default=None),
-         make_option('--user_name',
+        make_option('--user_name',
                     help='user name',
                     type='str',
                     default=None))

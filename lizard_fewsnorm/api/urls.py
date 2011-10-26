@@ -41,7 +41,10 @@ urlpatterns = patterns(
     url(r'^adapter/$',
         AdapterChoiceView.as_view(),
         name=NAME_PREFIX + 'adapter_choice'),
-    url(r'^adapter/(?P<fews_norm_source_slug>.*)/$',
+    url(r'^adapter/(?P<fews_norm_source_slug>[-\w]+)/$',
+        AdapterView.as_view(adapter=AdapterFewsNorm),
+        name=NAME_PREFIX + 'adapter'),
+    url(r'^adapter/(?P<fews_norm_source_slug>[-\w]+)/(?P<adapter_function>.*)/$',
         AdapterView.as_view(adapter=AdapterFewsNorm),
         name=NAME_PREFIX + 'adapter'),
     )

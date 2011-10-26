@@ -57,16 +57,30 @@ class AdapterView(View):
     """
     Class based REST view for adapter.
     """
+
     adapter = None  # This way your as_view kwargs will be passed
 
     def get(self, request, *args, **kwargs):
+        """
+        Execute adapter function.
+
+        If adapter_function is in get kwargs, it will try to execute
+        the adapter_function with named parameters from request.GET.
+        """
+        fews_norm_source_slug = kwargs['fews_norm_source_slug']
         parameter_id = request.GET.get('parameter_id', None)
         module_id = request.GET.get('module_id', None)
-        fews_norm_source_slug = kwargs['fews_norm_source_slug']
         layer_arguments = {
             'parameter_id': parameter_id,
             'module_id': module_id,
             'fews_norm_source_slug': fews_norm_source_slug,
             }
-        adapter_instance = self.adapter(None, layer_arguments=layer_arguments)
-        return {'ja': 'ha'}
+        if 'adapter_function' in kwargs:
+            adapter_instance = self.adapter(
+                None, layer_arguments=layer_arguments)
+            adapter_function = kwargs['adapter_function']
+            # Experimental: Execute
+            adapter_args = {}
+            return getattr(adapter_instance, adapter_function)(**adapter_args)
+        else:
+            return {'attributes': dir(self.adapter)}

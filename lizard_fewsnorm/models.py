@@ -14,7 +14,7 @@ from lizard_geo.models import GeoObjectGroup
 from lizard_map.coordinates import rd_to_wgs84
 
 import logging
-logger = logging.getLogger("lizard-fewsnorm.models")
+logger = logging.getLogger(__name__)
 
 
 class Users(models.Model):
@@ -304,8 +304,8 @@ class FewsNormSource(models.Model):
     Define a source database for fews norm.
     """
     name = models.CharField(max_length=128)
-    slug = models.SlugField()
-    database_name = models.CharField(max_length=40)
+    slug = models.SlugField(unique=True)
+    database_name = models.CharField(max_length=40, unique=True)
 
     def _empty_cache(self):
         logger.debug('Empty GeoLocationCache for fewsnorm %s...', self.name)
@@ -326,54 +326,73 @@ class FewsNormSource(models.Model):
         return geo_object_group
 
     @transaction.commit_on_success
-    def synchronize_cache(self, user_name):
+    def synchronize_parameter_cache(self):
         """
-        Fill GeoLocationCache, ParameterCache and ModuleCache.
+        Fill ParameterCache
         """
-        # parameters = {}
-        # logger.debug('Creating ParameterCache for fewsnorm %s...', self.name)
-        # for parameter in Parameters.objects.all():
-        #     parameter_cache, _ = ParameterCache.objects.get_or_create(
-        #         ident=parameter.id)
-        #     parameters[parameter_cache.ident] = parameter_cache
+        parameters = {}
+        for parameter in self.o(Parameters).all():
+            print 'Get or create parameter cache %s' % parameter.id
+            parameter_cache, _ = ParameterCache.objects.get_or_create(
+                ident=parameter.id)
+            parameters[parameter_cache.ident] = parameter_cache
+        return parameters
 
-        # modules = {}
-        # logger.debug('Creating ModuleCache for fewsnorm %s...', self.name)
-        # for module in ModuleInstances.objects.all():
-        #     module_cache, _ = ModuleCache.objects.get_or_cretae(
-        #         ident=module.id)
-        #     modules[module_cache.ident] = module_cache
+    @transaction.commit_on_success
+    def synchronize_module_cache(self):
+        """
+        Fill ModuleCache.
+        """
+        modules = {}
+        for module in self.o(ModuleInstances).all():
+            module_cache, _ = ModuleCache.objects.get_or_create(
+                ident=module.id)
+            modules[module_cache.ident] = module_cache
+        return modules
 
+    @transaction.commit_on_success
+    def synchronize_location_cache(self, user_name, parameters, modules):
+        """
+        Fill GeoLocationCache.
+
+        parameters and modules are dicts with ParameterCache and
+        ModuleCache. Keys are their idents.
+        """
         self._empty_cache()  # For GeoLocationCache
         source_locations = self.source_locations()
         geo_object_group = self.get_or_create_geoobjectgroup(user_name)
-        logger.debug('Creating GeoLocationCache for fewsnorm %s...', self.name)
         for location in source_locations:
             logger.debug('processing location.id: %s' % location.id)
-            obj = GeoLocationCache()
-            obj.ident = location.id[:80]
-            obj.fews_norm_source = self
-            obj.name = '%s' % location.name
-            obj.shortname = '%s' % location.shortname
-            # obj.parameter_id = '%s' % location.parameterkey
-            obj.geo_object_group = geo_object_group
             wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
-            obj.geometry =  GEOSGeometry(Point(wgs84_x, wgs84_y),
-                                         srid=4326)
-            # obj.geometry =  GEOSGeometry(Point(location.x, location.y),
-            #                              srid=28992)
-            obj.save()
-            # for timeserieskeys in obj.timeserieskeys_set.all():
-            #     obj.parameter_set.get_or_create(
-            #         ident=timeserieskeys.parameterkey.ident)
-            #     obj.module_set.get_or_create(
-            #         ident=timeserieskeys.moduleinstancekey.ident)
+            geo_location_cache = GeoLocationCache(
+                ident=location.id[:80],
+                fews_norm_source=self,
+                name='%s' % location.name,
+                shortname='%s' % location.shortname,
+                geo_object_group=geo_object_group,
+                geometry=GEOSGeometry(Point(wgs84_x, wgs84_y), srid=4326))
+            geo_location_cache.save()
+
+            for timeserieskeys in location.timeserieskeys_set.all():
+                geo_location_cache.parameter.add(
+                    parameters[timeserieskeys.parameterkey.id])
+                geo_location_cache.module.add(
+                    modules[timeserieskeys.moduleinstancekey.id])
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)
 
-    def model_object(self, model_object):
+    def o(self, model_object):
         """
         Return Model using database_name.
+
+        Using the short name o because the function is supposed to be
+        a shortcut.
+
+        Example usage:
+
+        >>> source = FewsNormSource.objects.all()[0]
+        >>> source.o(ModuleInstances).all()
         """
+
         return model_object.objects.using(self.database_name)

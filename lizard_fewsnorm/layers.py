@@ -64,26 +64,32 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         parameter_id and module_id"""
         styles = {}
         #fews_norm_source = FewsNormSource(slug=self.fews_norm_source_slug)
-        # query = (
-        #     """
-        #   (select geometry from
-        #      lizard_geo_geoobject as geoobject,
-        #      lizard_fewsnorm_geolocationcache as loc,
-        #      lizard_fewsnorm_fewsnormsource as source where
-        #        loc.geoobject_ptr_id = geoobject.id and
-        #        loc.fews_norm_source_id = source.id and
-        #        source.slug = '%s'
-        #    ) data""" % self.fews_norm_source_slug)
+        query = (
+            """
+          (select geometry from
+             lizard_geo_geoobject as geoobject,
+             lizard_fewsnorm_geolocationcache as loc,
+             lizard_fewsnorm_fewsnormsource as source,
+             lizard_fewsnorm_parametercache as par,
+             lizard_fewsnorm_modulecache as mod,
+             lizard_fewsnorm_geolocationcache_parameter as geoloc_par where
+               loc.geoobject_ptr_id = geoobject.id and
+               loc.fews_norm_source_id = source.id and
+               source.slug = '%s' and
+               loc.geoobject_ptr_id = geoloc_par.geolocationcache_id and
+               geoloc_par.parametercache_id = par.id and
+               par.ident = '%s'
+           ) data""" % (self.fews_norm_source_slug, self.parameter_id))
         # query = (
         #     """(select geometry from
         #          lizard_geo_geoobject as geoobject,
         #          lizard_fewsnorm_geolocationcache as loc
         #          where loc.geoobject_ptr_id = geoobject.id
         #     ) data""")
-        query = (
-            """(select geometry from
-                 lizard_geo_geoobject
-            ) data""")
+        # query = (
+        #     """(select geometry from
+        #          lizard_geo_geoobject
+        #     ) data""")
 
         default_database = settings.DATABASES['default']
         datasource = mapnik.PostGIS(

@@ -2,6 +2,8 @@ import os
 import mapnik
 
 from django.conf import settings
+from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import GEOSGeometry
 
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
@@ -103,11 +105,15 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
 
         return layers, styles
 
-    def search(self, x, y, radius=None):
+    def search(self, google_x, google_y, radius=None):
         """Search by coordinates. Return list of dicts for matching
         items.
         """
-        pass
+        print "+++++++++++++++++++++++++++++++++++++++++++"
+        print "%s | %s | %s" % (google_x, google_y, radius)
+        x, y = coordinates.google_to_rd(google_x, google_y)
+        print "%s | %s | %s" % (x, y, radius)
+        pnt = Point(x, y)
 
     def value_aggregate(self, identifier, aggregate_functions,
                         start_date=None, end_date=None):

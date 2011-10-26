@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.gis',
     'django.contrib.sites',
+    'nens-graph >= 0.3.1',
     ]
 ROOT_URLCONF = 'lizard_fewsnorm.urls'
 

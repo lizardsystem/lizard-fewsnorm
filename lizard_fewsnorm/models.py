@@ -294,6 +294,7 @@ class GeoLocationCache(GeoObject):
         ParameterCache, null=True, blank=True)
     module = models.ManyToManyField(
         ModuleCache, null=True, blank=True)
+    objects = models.GeoManager()
 
     def __unicode__(self):
         return '%s %s ' % (self.fews_norm_source, self.ident)

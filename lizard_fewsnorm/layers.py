@@ -1,16 +1,24 @@
 import os
 import mapnik
+import math
 
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.measure import D
 
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
 from lizard_fewsnorm.models import FewsNormSource
+from lizard_fewsnorm.models import
 
 from lizard_map.models import ICON_ORIGINALS
 from lizard_map.symbol_manager import SymbolManager
+
+from nens_graph.rainapp import RainappGraph
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class AdapterFewsNorm(WorkspaceItemAdapter):
@@ -80,12 +88,12 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                geoloc_par.parametercache_id = par.id and
                par.ident = '%s'
            ) data""" % (self.fews_norm_source_slug, self.parameter_id))
-        # query = (
-        #     """(select geometry from
-        #          lizard_geo_geoobject as geoobject,
-        #          lizard_fewsnorm_geolocationcache as loc
-        #          where loc.geoobject_ptr_id = geoobject.id
-        #     ) data""")
+        query = (
+            """(select geometry from
+                 lizard_geo_geoobject as geoobject,
+                 lizard_fewsnorm_geolocationcache as loc
+                 where loc.geoobject_ptr_id = geoobject.id
+            ) data""")
         # query = (
         #     """(select geometry from
         #          lizard_geo_geoobject
@@ -115,18 +123,36 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """Search by coordinates. Return list of dicts for matching
         items.
         """
-        print "+++++++++++++++++++++++++++++++++++++++++++"
-        print "%s | %s | %s" % (google_x, google_y, radius)
-        x, y = coordinates.google_to_rd(google_x, google_y)
-        print "%s | %s | %s" % (x, y, radius)
-        pnt = Point(x, y)
+        def distance(x1, y1, x2, y2):
+            return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+        x, y = coordinates.google_to_wgs84(google_x, google_y)
+        pnt = GEOSGeometry(Point(x, y),srid=4326)
+        locations = GeoLocationCache.objects.filter(
+            geometry__distance_lte=(pnt, D(m=radius * 0.3)))
+
+        result = []
+        for location in locations:
+            location_google_x, location_google_y =  coordinates.wgs84_to_google(
+                location.geometry.get_x(),
+                location.geometry.get_y())
+            dist = distance(google_x, google_y, location_google_x, location_google_y)
+            logger.debug(location.__unicode__())
+            result.append(
+                {'distance': dist,
+                 'name': location.__unicode__(),
+                 'shortname': location.shortname,
+                 'workspace_item': self.workspace_item,
+                 'identifier': {'ident': location.ident},
+                 'google_coords': (location_google_x, location_google_y)})
+        return result
 
     def value_aggregate(self, identifier, aggregate_functions,
                         start_date=None, end_date=None):
         return self.value_aggregate_default(
             identifier, aggregate_functions_start_date, end_date)
 
-    def location(self, identifier=None, layout=None):
+    def location(self, ident, layout=None):
         """
         {'object': <...>,
         'google_x': x coordinate in google,
@@ -135,14 +161,67 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         'identifier': {...},
         'grouping_hint': optional unique group identifier, i.e. unit m3/s}
         """
-        pass
+        location = GeoLocationCache.objects.get(ident=ident)
+        return {'name': location.__unicode__(),
+                'shortname': location.shortname,
+                'workspace_item': self.workspace_item,
+                'identifier': {'location': location.ident}}
 
     def image(self, identifiers=None, start_date=None, end_date=None,
               width=None, height=None, layout_extra=None):
         """
         Create graph of given parameters.
         """
-        pass
+         """Return png image data for barchart."""
+        # today_site_tz = self.tz.localize(datetime.datetime.now())
+        # start_date_utc, end_date_utc = self._to_utc(start_date, end_date)
+        # graph = RainappGraph(start_date_utc,
+        #                      end_date_utc,
+        #                      width=width,
+        #                      height=height,
+        #                      today=today_site_tz,
+        #                      tz=self.tz)
+
+        # # Gets timeseries, draws the bars, sets  the legend
+        # for identifier in identifiers:
+        #     location_name = self._get_location_name(identifier)
+        #     cached_value_result = self._cached_values(identifier,
+        #                                               start_date_utc,
+        #                                               end_date_utc)
+        #     dates_site_tz = [row['datetime'].astimezone(self.tz)
+        #                  for row in cached_value_result]
+        #     values = [row['value'] for row in cached_value_result]
+        #     units = [row['unit'] for row in cached_value_result]
+        #     unit = ''
+        #     if len(units) > 0:
+        #         unit = units[0]
+        #     if values:
+        #         unit_timedelta = UNIT_TO_TIMEDELTA.get(unit, None)
+        #         if unit_timedelta:
+        #             # We can draw bars corresponding to period
+        #             bar_width = graph.get_bar_width(unit_timedelta)
+        #             offset = -1 * unit_timedelta
+        #             offset_dates = [d + offset for d in dates_site_tz]
+        #         else:
+        #             # We can only draw spikes.
+        #             bar_width = 0
+        #             offset_dates = dates_site_tz
+        #         graph.axes.bar(offset_dates,
+        #                        values,
+        #                        edgecolor='blue',
+        #                        width=bar_width,
+        #                        label=location_name)
+        #     graph.set_ylabel(unit)
+        #     # graph.legend()
+        #     graph.suptitle(location_name)
+
+        #     # Use first identifier and breaks the loop
+        #     break
+
+        # graph.responseobject = HttpResponse(content_type='image/png')
+
+        # return graph.png_response()
+         pass
 
     def html(self, snippet_group=None, identifiers=None, layout_options=None):
         return self.html_default(

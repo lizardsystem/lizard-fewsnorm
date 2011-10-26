@@ -62,18 +62,26 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         parameter_id and module_id"""
         styles = {}
         #fews_norm_source = FewsNormSource(slug=self.fews_norm_source_slug)
-        query = (
-            """
-          (select geometry from
-             lizard_geo_geoobject as geoobject,
-             lizard_fewsnorm_geolocationcache as loc,
-             lizard_fewsnorm_fewsnormsource as source where
-               loc.geoobject_ptr_id = geoobject.id and
-               loc.fews_norm_source_id = source.id and
-               source.slug = '%s'
-           ) data""" % self.fews_norm_source_slug)
         # query = (
-        #     "(select geometry from lizard_geo_geoobject) data")
+        #     """
+        #   (select geometry from
+        #      lizard_geo_geoobject as geoobject,
+        #      lizard_fewsnorm_geolocationcache as loc,
+        #      lizard_fewsnorm_fewsnormsource as source where
+        #        loc.geoobject_ptr_id = geoobject.id and
+        #        loc.fews_norm_source_id = source.id and
+        #        source.slug = '%s'
+        #    ) data""" % self.fews_norm_source_slug)
+        # query = (
+        #     """(select geometry from
+        #          lizard_geo_geoobject as geoobject,
+        #          lizard_fewsnorm_geolocationcache as loc
+        #          where loc.geoobject_ptr_id = geoobject.id
+        #     ) data""")
+        query = (
+            """(select geometry from
+                 lizard_geo_geoobject
+            ) data""")
 
         default_database = settings.DATABASES['default']
         datasource = mapnik.PostGIS(

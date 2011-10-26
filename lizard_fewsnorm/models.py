@@ -362,12 +362,12 @@ class FewsNormSource(models.Model):
                                          srid=4326)
             # obj.geometry =  GEOSGeometry(Point(location.x, location.y),
             #                              srid=28992)
+            obj.save()
             for timeserieskeys in obj.timeserieskeys_set.all():
                 obj.parameter_set.get_or_create(
                     ident=timeserieskeys.parameterkey.ident)
                 obj.module_set.get_or_create(
                     ident=timeserieskeys.moduleinstancekey.ident)
-            obj.save()
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)

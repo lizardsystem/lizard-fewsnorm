@@ -1,6 +1,7 @@
 # (c) Nelen & Schuurmans.  GPL licensed, see LICENSE.txt.
 from django.contrib.gis.db import models
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 from django.template.defaultfilters import slugify
 from django.contrib.gis.geos import GEOSGeometry
 from django.db import transaction
@@ -275,12 +276,19 @@ class ParameterCache(models.Model):
     def __unicode__(self):
         return '%s' % self.ident
 
+    def api_url(self):
+        return reverse('lizard_fewsnorm_api_parameter_detail',
+                       kwargs={'ident': self.ident})
+
 
 class ModuleCache(models.Model):
     ident = models.CharField(max_length=64)
 
     def __unicode__(self):
         return '%s' % self.ident
+
+    # def api_url(self):
+    #     return reverse('lizard_fewsnorm_api_module')
 
 
 class GeoLocationCache(GeoObject):
@@ -297,6 +305,10 @@ class GeoLocationCache(GeoObject):
 
     def __unicode__(self):
         return '%s %s ' % (self.fews_norm_source, self.ident)
+
+    def api_url(self):
+        return reverse('lizard_fewsnorm_api_location_detail',
+                       kwargs={'ident': self.ident})
 
 
 class FewsNormSource(models.Model):
@@ -402,3 +414,8 @@ class FewsNormSource(models.Model):
         """
 
         return model_object.objects.using(self.database_name)
+
+    def api_url(self):
+        return reverse(
+            'lizard_fewsnorm_api_adapter',
+            kwargs={'fews_norm_source_slug': self.slug})

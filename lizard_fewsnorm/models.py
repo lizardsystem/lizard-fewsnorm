@@ -373,11 +373,17 @@ class FewsNormSource(models.Model):
                 geometry=GEOSGeometry(Point(wgs84_x, wgs84_y), srid=4326))
             geo_location_cache.save()
 
-            for timeserieskeys in location.timeserieskeys_set.all():
+            timeserieskeys = location.timeserieskeys_set.all()
+            for single_timeserieskeys in timeserieskeys:
                 geo_location_cache.parameter.add(
-                    parameters[timeserieskeys.parameterkey.id])
+                    parameters[single_timeserieskeys.parameterkey.id])
                 geo_location_cache.module.add(
-                    modules[timeserieskeys.moduleinstancekey.id])
+                    modules[single_timeserieskeys.moduleinstancekey.id])
+            if not timeserieskeys:
+                logger.warning(
+                    'No timeseries associated with location %s, '
+                    'the location will not be visible in Lizard.' %
+                    location.id)
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)

@@ -8,7 +8,7 @@ from lizard_fewsnorm.models import FewsNormSource
 from django.db import transaction
 
 import logging
-log = logging.getLogger("lizard-fewsnorm.management.command.sync_cache")
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -36,6 +36,7 @@ class Command(BaseCommand):
         else:
             return FewsNormSource.objects.filter(database_name=source)
 
+    @transaction.commit_on_success
     def handle(self, *args, **options):
         user_name = options["user_name"]
         if user_name is None:
@@ -44,4 +45,14 @@ class Command(BaseCommand):
 
         sources = self.get_sources(options["source"])
         for source in sources:
-            source.synchronize_cache(user_name)
+            logger.debug(
+                'Creating ParameterCache for fewsnorm %s...', source.name)
+            parameters = source.synchronize_parameter_cache()
+
+            logger.debug(
+                'Creating ModuleCache for fewsnorm %s...', source.name)
+            modules = source.synchronize_module_cache()
+
+            logger.debug(
+                'Creating GeoLocationCache for fewsnorm %s...', source.name)
+            source.synchronize_location_cache(user_name, parameters, modules)

@@ -18,10 +18,10 @@ class FewsNormSourceView(AppView):
     template_name = 'lizard_fewsnorm/fews_norm_source.html'
 
     def parameters(self):
-        return self.fews_norm_source.model_object(Parameters).all()
+        return self.fews_norm_source.o(Parameters).all()
 
     def modules(self):
-        return self.fews_norm_source.model_object(ModuleInstances).all()
+        return self.fews_norm_source.o(ModuleInstances).all()
 
     def fews_norm_source(self):
         return self.fews_norm_source

@@ -7,8 +7,9 @@ Changelog of lizard-fewsnorm
 
 - Added management command to sync. locations.
 
-- Added models for FEWSNORM database
+- Added models for FEWSNORM database.
 
-- Added models for FewsNormSource and GeoLocationCache.
+- Added models for FewsNormSource, GeoLocationCache, ParameterCache,
+  ModuleCache.
 
 - Initial library skeleton created by nensskel.  [Jack Ha]

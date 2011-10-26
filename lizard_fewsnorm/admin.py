@@ -2,6 +2,8 @@ from django.contrib.gis import admin
 
 from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
+from lizard_fewsnorm.models import ModuleCache
+from lizard_fewsnorm.models import ParameterCache
 
 # These models don't come from the default database.
 # from lizard_fewsnorm.models import Users
@@ -24,3 +26,5 @@ class FewsNormSourceAdmin(admin.ModelAdmin):
 
 admin.site.register(FewsNormSource, FewsNormSourceAdmin)
 admin.site.register(GeoLocationCache)
+admin.site.register(ModuleCache)
+admin.site.register(ParameterCache)

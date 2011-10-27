@@ -10,12 +10,9 @@ from django.contrib.gis.measure import D
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
 from lizard_fewsnorm.models import FewsNormSource
-from lizard_fewsnorm.models import
 
 from lizard_map.models import ICON_ORIGINALS
 from lizard_map.symbol_manager import SymbolManager
-
-from nens_graph.rainapp import RainappGraph
 
 import logging
 logger = logging.getLogger(__name__)
@@ -23,11 +20,14 @@ logger = logging.getLogger(__name__)
 
 class AdapterFewsNorm(WorkspaceItemAdapter):
     def __init__(self, *args, **kwargs):
+        """
+        TODO: make fews_norm_source_slug optional (or leave it away).
+        """
         super(AdapterFewsNorm, self).__init__(*args, **kwargs)
-        self.parameter_id = self.layer_arguments['parameter_id']
-        self.module_id = self.layer_arguments['module_id']
-        self.fews_norm_source_slug = self.layer_arguments[
-            'fews_norm_source_slug']
+        self.parameter_id = self.layer_arguments.get('parameter_id', None)
+        self.module_id = self.layer_arguments.get('module_id', None)
+        self.fews_norm_source_slug = self.layer_arguments.get(
+            'fews_norm_source_slug', None)
 
     def _default_mapnik_style(self):
         icon_style = {
@@ -69,9 +69,10 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """Generate layers and styles
 
         The layer is filtered using fews_norm_source_slug,
-        parameter_id and module_id"""
+        parameter_id and module_id
+        """
         styles = {}
-        #fews_norm_source = FewsNormSource(slug=self.fews_norm_source_slug)
+
         query = (
             """
           (select geometry from
@@ -88,12 +89,12 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                geoloc_par.parametercache_id = par.id and
                par.ident = '%s'
            ) data""" % (self.fews_norm_source_slug, self.parameter_id))
-        query = (
-            """(select geometry from
-                 lizard_geo_geoobject as geoobject,
-                 lizard_fewsnorm_geolocationcache as loc
-                 where loc.geoobject_ptr_id = geoobject.id
-            ) data""")
+        # query = (
+        #     """(select geometry from
+        #          lizard_geo_geoobject as geoobject,
+        #          lizard_fewsnorm_geolocationcache as loc
+        #          where loc.geoobject_ptr_id = geoobject.id
+        #     ) data""")
         # query = (
         #     """(select geometry from
         #          lizard_geo_geoobject
@@ -172,7 +173,6 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """
         Create graph of given parameters.
         """
-         """Return png image data for barchart."""
         # today_site_tz = self.tz.localize(datetime.datetime.now())
         # start_date_utc, end_date_utc = self._to_utc(start_date, end_date)
         # graph = RainappGraph(start_date_utc,
@@ -221,7 +221,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         # graph.responseobject = HttpResponse(content_type='image/png')
 
         # return graph.png_response()
-         pass
+        pass
 
     def html(self, snippet_group=None, identifiers=None, layout_options=None):
         return self.html_default(

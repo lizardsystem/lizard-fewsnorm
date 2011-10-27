@@ -347,7 +347,7 @@ class FewsNormSource(models.Model):
         """
         parameters = {}
         for parameter in self.o(Parameters).all():
-            print 'Get or create parameter cache %s' % parameter.id
+            logger.debug('Get or create parameter cache %s', parameter.id)
             parameter_cache, _ = ParameterCache.objects.get_or_create(
                 ident=parameter.id)
             parameters[parameter_cache.ident] = parameter_cache
@@ -414,8 +414,9 @@ class FewsNormSource(models.Model):
 
         Example usage:
 
-        >>> source = FewsNormSource.objects.all()[0]
-        >>> source.o(ModuleInstances).all()
+        >>> source = FewsNormSource(name='test', database_name='default')
+        >>> source.o(FewsNormSource).all()
+        []
         """
 
         return model_object.objects.using(self.database_name)

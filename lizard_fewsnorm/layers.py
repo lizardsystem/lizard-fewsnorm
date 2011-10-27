@@ -10,6 +10,7 @@ from django.contrib.gis.measure import D
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
 from lizard_fewsnorm.models import FewsNormSource
+from lizard_fewsnorm.models import GeoLocationCache
 
 from lizard_map.models import ICON_ORIGINALS
 from lizard_map.symbol_manager import SymbolManager
@@ -131,7 +132,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         pnt = GEOSGeometry(Point(x, y),srid=4326)
         locations = GeoLocationCache.objects.filter(
             geometry__distance_lte=(pnt, D(m=radius * 0.3)))
-
+        print locations
         result = []
         for location in locations:
             location_google_x, location_google_y =  coordinates.wgs84_to_google(

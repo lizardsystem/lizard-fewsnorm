@@ -48,6 +48,7 @@ DATABASES = {
 
 SITE_ID = 1
 INSTALLED_APPS = [
+    'lizard_geo',
     'lizard_fewsnorm',
     'lizard_ui',
     'nens_graph',

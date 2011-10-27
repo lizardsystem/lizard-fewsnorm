@@ -1,6 +1,7 @@
 import os
 import mapnik
 import math
+import datetime
 
 from django.conf import settings
 from django.contrib.gis.geos import Point
@@ -11,9 +12,16 @@ from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
 from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
+from lizard_fewsnorm.models import ParameterCache
+from lizard_fewsnorm.models import Parameters
+from lizard_fewsnorm.models import ParameterGroups
+from lizard_fewsnorm.models import Locations
+from lizard_fewsnorm.models import TimeseriesKeys
+from lizard_fewsnorm.models import TimeseriesValuesAndFlags
 
 from lizard_map.models import ICON_ORIGINALS
 from lizard_map.symbol_manager import SymbolManager
+from lizard_map.adapter import Graph
 
 import logging
 logger = logging.getLogger(__name__)
@@ -131,8 +139,8 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         x, y = coordinates.google_to_wgs84(google_x, google_y)
         pnt = GEOSGeometry(Point(x, y),srid=4326)
         locations = GeoLocationCache.objects.filter(
-            geometry__distance_lte=(pnt, D(m=radius * 0.3)))
-        print locations
+            geometry__distance_lte=(pnt, D(m=radius * 0.3)),
+            parameter=ParameterCache.objects.get(ident=self.parameter_id))
         result = []
         for location in locations:
             location_google_x, location_google_y =  coordinates.wgs84_to_google(
@@ -172,57 +180,69 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
     def image(self, identifiers=None, start_date=None, end_date=None,
               width=None, height=None, layout_extra=None):
         """
-        Create graph of given parameters.
+        Create graph of given parameters
+        for all locations in identifiers object.
+        Selects timeseries:
+        - look up fewsnorm source in FewsNormSource with self.fews_norm_source_slug
+        - look up parameter in Parameters with self.parameter_id
+        - foor each location in identifiers
+           - look up location im Locations with identifier
+           - look up timeserieskey in TimeseriesKey
+           -
+
         """
-        # today_site_tz = self.tz.localize(datetime.datetime.now())
-        # start_date_utc, end_date_utc = self._to_utc(start_date, end_date)
-        # graph = RainappGraph(start_date_utc,
-        #                      end_date_utc,
-        #                      width=width,
-        #                      height=height,
-        #                      today=today_site_tz,
-        #                      tz=self.tz)
 
-        # # Gets timeseries, draws the bars, sets  the legend
-        # for identifier in identifiers:
-        #     location_name = self._get_location_name(identifier)
-        #     cached_value_result = self._cached_values(identifier,
-        #                                               start_date_utc,
-        #                                               end_date_utc)
-        #     dates_site_tz = [row['datetime'].astimezone(self.tz)
-        #                  for row in cached_value_result]
-        #     values = [row['value'] for row in cached_value_result]
-        #     units = [row['unit'] for row in cached_value_result]
-        #     unit = ''
-        #     if len(units) > 0:
-        #         unit = units[0]
-        #     if values:
-        #         unit_timedelta = UNIT_TO_TIMEDELTA.get(unit, None)
-        #         if unit_timedelta:
-        #             # We can draw bars corresponding to period
-        #             bar_width = graph.get_bar_width(unit_timedelta)
-        #             offset = -1 * unit_timedelta
-        #             offset_dates = [d + offset for d in dates_site_tz]
-        #         else:
-        #             # We can only draw spikes.
-        #             bar_width = 0
-        #             offset_dates = dates_site_tz
-        #         graph.axes.bar(offset_dates,
-        #                        values,
-        #                        edgecolor='blue',
-        #                        width=bar_width,
-        #                        label=location_name)
-        #     graph.set_ylabel(unit)
-        #     # graph.legend()
-        #     graph.suptitle(location_name)
+        line_styles = self.line_styles(identifiers)
 
-        #     # Use first identifier and breaks the loop
-        #     break
+        today = datetime.datetime.now()
+        graph = Graph(start_date, end_date,
+                      width=width, height=height, today=today)
+        graph.axes.grid(True)
 
-        # graph.responseobject = HttpResponse(content_type='image/png')
+        # Draw graph lines with extra's
+        title = None
+        y_min, y_max = None, None
+        legend = None
 
-        # return graph.png_response()
-        pass
+        graph.add_today()
+
+        fewsnorm_source = FewsNormSource.objects.get(slug=self.fews_norm_source_slug)
+        parameter = fewsnorm_source.o(Parameters).get(id=self.parameter_id)
+
+        for identifier in identifiers:
+            location = fewsnorm_source.o(Locations).get(
+                id=identifier['ident'])
+
+            serieskey_filter = {'locationkey': location,
+                                'parameterkey': parameter}
+            serieskey = fewsnorm_source.o(TimeseriesKeys).get(**serieskey_filter)
+
+            timeseries_filter = {'serieskey': serieskey,
+                                 'datetime__gte': start_date,
+                                 'datetime__lte': end_date}
+            timeseriedata = fewsnorm_source.o(TimeseriesValuesAndFlags).order_by(
+                "datetime").filter(**timeseries_filter)
+
+            dates = []
+            values = []
+            for series_row in timeseriedata:
+                dates.append(series_row.datetime)
+                values.append(series_row.scalarvalue)
+            if len(values) < 30:
+                plot_style = 'o-'
+            else:
+                plot_style = '-'
+            graph.axes.plot(dates, values, plot_style,
+                            lw=1,
+                            color=line_styles[str(identifier)]['color'],
+                            label=location.id)
+            graph.axes.set_ylabel('unit')
+
+            graph.legend()
+            graph.axes.legend_.draw_frame(False)
+
+        return graph.http_png()
+
 
     def html(self, snippet_group=None, identifiers=None, layout_options=None):
         return self.html_default(

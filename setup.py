@@ -18,7 +18,6 @@ install_requires = [
     'lizard-geo',
     'pkginfo',
     'django-compositepk',
-    'nens-graph >= 0.3.1',
     ],
 
 tests_require = [

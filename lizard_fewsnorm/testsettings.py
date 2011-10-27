@@ -51,7 +51,6 @@ INSTALLED_APPS = [
     'lizard_geo',
     'lizard_fewsnorm',
     'lizard_ui',
-    'nens_graph',
     'composite_pk',
     'staticfiles',
     'compressor',

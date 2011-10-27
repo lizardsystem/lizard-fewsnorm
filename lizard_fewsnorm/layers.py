@@ -187,9 +187,8 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         - look up parameter in Parameters with self.parameter_id
         - foor each location in identifiers
            - look up location im Locations with identifier
-           - look up timeserieskey in TimeseriesKey
-           -
-
+           - look up timeserieskey in TimeseriesKey with location and paremater
+           - look up timeseries with timeserieskey
         """
 
         line_styles = self.line_styles(identifiers)

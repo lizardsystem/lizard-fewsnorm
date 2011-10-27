@@ -50,6 +50,7 @@ SITE_ID = 1
 INSTALLED_APPS = [
     'lizard_fewsnorm',
     'lizard_ui',
+    'nens-graph',
     'composite_pk',
     'staticfiles',
     'compressor',
@@ -62,7 +63,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.gis',
     'django.contrib.sites',
-    'nens-graph >= 0.3.1',
     ]
 ROOT_URLCONF = 'lizard_fewsnorm.urls'
 

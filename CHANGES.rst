@@ -5,6 +5,8 @@ Changelog of lizard-fewsnorm
 0.1 (unreleased)
 ----------------
 
+- Implemented adapter functions search, location, image.
+
 - Added migrations.
 
 - Added management command to sync. locations.

@@ -5,9 +5,11 @@ from django.conf.urls.defaults import url
 from django.contrib import admin
 
 from djangorestframework.views import InstanceModelView
+from djangorestframework.views import ListOrCreateModelView
 
 from lizard_fewsnorm.api.resources import LocationResource
 from lizard_fewsnorm.api.resources import ParameterResource
+from lizard_fewsnorm.api.resources import FewsNormSourceResource
 
 from lizard_fewsnorm.api.views import AdapterView
 from lizard_fewsnorm.api.views import AdapterChoiceView
@@ -26,6 +28,12 @@ urlpatterns = patterns(
     url(r'^$',
         RootView.as_view(),
         name=NAME_PREFIX + 'root'),
+    url(r'^source/$',
+        ListOrCreateModelView.as_view(resource=FewsNormSourceResource),
+        name=NAME_PREFIX + 'source_list'),
+    url(r'^source/(?P<slug>.*)/$',
+        InstanceModelView.as_view(resource=FewsNormSourceResource),
+        name=NAME_PREFIX + 'source_detail'),
     url(r'^location/$',
         LocationView.as_view(),
         name=NAME_PREFIX + 'location'),

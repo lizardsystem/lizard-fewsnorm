@@ -15,11 +15,14 @@ class RootView(View):
             'adapter': {
                 'name': 'adapter-fewsnorm',
                 'url': reverse("lizard_fewsnorm_api_adapter_choice")},
-            'locations': {
-                'name': 'locations',
+            'source': {
+                'name': 'source',
+                'url': reverse("lizard_fewsnorm_api_source_list")},
+            'location': {
+                'name': 'location',
                 'url': reverse("lizard_fewsnorm_api_location")},
-            'parameters': {
-                'name': 'parameters',
+            'parameter': {
+                'name': 'parameter',
                 'url': reverse("lizard_fewsnorm_api_parameter")}
             }
 

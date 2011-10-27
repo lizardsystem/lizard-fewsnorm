@@ -50,7 +50,7 @@ SITE_ID = 1
 INSTALLED_APPS = [
     'lizard_fewsnorm',
     'lizard_ui',
-    'nens-graph',
+    'nens_graph',
     'composite_pk',
     'staticfiles',
     'compressor',

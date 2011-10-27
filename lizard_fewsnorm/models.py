@@ -298,6 +298,8 @@ class GeoLocationCache(GeoObject):
     fews_norm_source = models.ForeignKey('FewsNormSource')
     name = models.CharField(max_length=64)
     shortname = models.CharField(max_length=64)
+    icon = models.CharField(max_length=64)
+    tooltip = models.CharField(max_length=64)
     parameter = models.ManyToManyField(
         ParameterCache, null=True, blank=True)
     module = models.ManyToManyField(
@@ -382,6 +384,8 @@ class FewsNormSource(models.Model):
                 fews_norm_source=self,
                 name='%s' % location.name,
                 shortname='%s' % location.shortname,
+                icon='%s' % location.icon,
+                tooltip='%s' % location.tooltip,
                 geo_object_group=geo_object_group,
                 geometry=GEOSGeometry(Point(wgs84_x, wgs84_y), srid=4326))
             geo_location_cache.save()

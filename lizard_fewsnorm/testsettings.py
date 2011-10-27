@@ -29,7 +29,7 @@ DATABASES = {
     # the specified database exists. When the tests cannot run, Jenkins sees
     # that as an error.
     'default': {
-        'NAME': 'vss',
+        'NAME': 'lizard-fewsnorm',
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'USER': 'buildout',
         'PASSWORD': 'buildout',
@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.gis',
     'django.contrib.sites',
+    'nens-graph >= 0.3.1',
     ]
 ROOT_URLCONF = 'lizard_fewsnorm.urls'
 

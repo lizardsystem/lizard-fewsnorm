@@ -40,7 +40,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         user_name = options["user_name"]
         if user_name is None:
-            log.error("Expects a user name, use --help for usage.")
+            logger.error("Expects a user name, use --help for usage.")
             return
 
         sources = self.get_sources(options["source"])

@@ -37,6 +37,10 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         self.module_id = self.layer_arguments.get('module_id', None)
         self.fews_norm_source_slug = self.layer_arguments.get(
             'fews_norm_source_slug', None)
+        self.fewsnorm_source = FewsNormSource.objects.get(
+            slug=self.fews_norm_source_slug)
+        self.parameter = self.fewsnorm_source.o(Parameters).get(
+            id=self.parameter_id)
 
     def _default_mapnik_style(self):
         icon_style = {
@@ -73,6 +77,23 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
 
         return point_style
 
+    def _parameter_group(self):
+        """
+        Returns ParameterGroups object of self.parameter
+        """
+        groupkey = self.parameter.groupkey.groupkey
+        parameter_group = self.fewsnorm_source.o(ParameterGroups).get(groupkey=groupkey)
+        return parameter_group
+
+    def _unit(self):
+        """
+        Returns parameter group unit
+        """
+        unit = self._parameter_group().unit
+        if unit:
+            return unit
+        else:
+            return "UNKOWN"
 
     def layer(self, layer_ids=None, request=None):
         """Generate layers and styles
@@ -177,12 +198,9 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                 'workspace_item': self.workspace_item,
                 'identifier': {'location': location.ident}}
 
-    def image(self, identifiers=None, start_date=None, end_date=None,
-              width=None, height=None, layout_extra=None):
+    def values(self, identifier, start_date, end_date):
         """
-        Create graph of given parameters
-        for all locations in identifiers object.
-        Selects timeseries:
+        Selects timeseries of given location and parameter:
         - look up fewsnorm source in FewsNormSource with self.fews_norm_source_slug
         - look up parameter in Parameters with self.parameter_id
         - foor each location in identifiers
@@ -190,52 +208,53 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
            - look up timeserieskey in TimeseriesKey with location and paremater
            - look up timeseries with timeserieskey
         """
+        location = self.fewsnorm_source.o(Locations).get(id=identifier['ident'])
+        serieskey_filter = {'locationkey': location, 'parameterkey': self.parameter}
+        serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(**serieskey_filter)
 
-        line_styles = self.line_styles(identifiers)
+        timeseries_filter = {'serieskey': serieskey,
+                             'datetime__gte': start_date,
+                             'datetime__lte': end_date}
+        timeseriedata = self.fewsnorm_source.o(TimeseriesValuesAndFlags).order_by(
+            "datetime").filter(**timeseries_filter)
+        result = []
+        for timeserie_row in timeseriedata:
+            result.append({
+                    'value': timeserie_row.scalarvalue,
+                    'datetime': timeserie_row.datetime,
+                    })
+        return result
 
+    def image(self, identifiers=None, start_date=None, end_date=None,
+              width=None, height=None, layout_extra=None):
+        """
+        Create graph of given parameters
+        for all locations in identifiers object.
+        """
         today = datetime.datetime.now()
         graph = Graph(start_date, end_date,
                       width=width, height=height, today=today)
         graph.axes.grid(True)
-
+        graph.add_today()
         # Draw graph lines with extra's
         title = None
         y_min, y_max = None, None
         legend = None
 
-        graph.add_today()
-
-        fewsnorm_source = FewsNormSource.objects.get(slug=self.fews_norm_source_slug)
-        parameter = fewsnorm_source.o(Parameters).get(id=self.parameter_id)
-
         for identifier in identifiers:
-            location = fewsnorm_source.o(Locations).get(
-                id=identifier['ident'])
-
-            serieskey_filter = {'locationkey': location,
-                                'parameterkey': parameter}
-            serieskey = fewsnorm_source.o(TimeseriesKeys).get(**serieskey_filter)
-
-            timeseries_filter = {'serieskey': serieskey,
-                                 'datetime__gte': start_date,
-                                 'datetime__lte': end_date}
-            timeseriedata = fewsnorm_source.o(TimeseriesValuesAndFlags).order_by(
-                "datetime").filter(**timeseries_filter)
-
+            timeseriesdata = self.values(identifier, start_date, end_date)
             dates = []
             values = []
-            for series_row in timeseriedata:
-                dates.append(series_row.datetime)
-                values.append(series_row.scalarvalue)
+            for series_row in timeseriesdata:
+                dates.append(series_row['datetime'])
+                values.append(series_row['value'])
             if len(values) < 30:
                 plot_style = 'o-'
             else:
                 plot_style = '-'
             graph.axes.plot(dates, values, plot_style,
-                            lw=1,
-                            color=line_styles[str(identifier)]['color'],
-                            label=location.id)
-            graph.axes.set_ylabel('unit')
+                            lw=1, label=identifier['ident'])
+            graph.axes.set_ylabel(self._unit())
 
             graph.legend()
             graph.axes.legend_.draw_frame(False)

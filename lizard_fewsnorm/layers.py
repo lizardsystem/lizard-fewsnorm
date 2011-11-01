@@ -149,6 +149,14 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
 
         return layers, styles
 
+    @classmethod
+    def identifiers(self):
+        """Return all possible identifiers in a list.
+        """
+        return [
+            {'ident': location.ident} for location in
+            GeoLocationCache.objects.all()]
+
     def search(self, google_x, google_y, radius=None):
         """Search by coordinates. Return list of dicts for matching
         items.

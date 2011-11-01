@@ -5,6 +5,8 @@ Changelog of lizard-fewsnorm
 0.1 (unreleased)
 ----------------
 
+- Started experimental REST API.
+
 - Implemented adapter functions search, location, image.
 
 - Added migrations.

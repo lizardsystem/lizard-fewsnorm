@@ -11,12 +11,13 @@ from lizard_fewsnorm.api.resources import LocationResource
 from lizard_fewsnorm.api.resources import ParameterResource
 from lizard_fewsnorm.api.resources import FewsNormSourceResource
 
-from lizard_fewsnorm.api.views import AdapterView
 from lizard_fewsnorm.api.views import AdapterChoiceView
+from lizard_fewsnorm.api.views import AdapterView
+from lizard_fewsnorm.api.views import IdentifierView
+from lizard_fewsnorm.api.views import LocationView
+from lizard_fewsnorm.api.views import ParameterView
 from lizard_fewsnorm.api.views import RootView
 from lizard_fewsnorm.layers import AdapterFewsNorm
-from lizard_fewsnorm.api.views import ParameterView
-from lizard_fewsnorm.api.views import LocationView
 
 
 admin.autodiscover()
@@ -37,6 +38,9 @@ urlpatterns = patterns(
     url(r'^location/$',
         LocationView.as_view(),
         name=NAME_PREFIX + 'location'),
+    url(r'^identifier/$',
+        IdentifierView.as_view(),
+        name=NAME_PREFIX + 'identifier'),
     url(r'^location/(?P<ident>.*)/$',
         InstanceModelView.as_view(resource=LocationResource),
         name=NAME_PREFIX + 'location_detail'),
@@ -46,13 +50,4 @@ urlpatterns = patterns(
     url(r'^parameter/(?P<ident>.*)/$',
         InstanceModelView.as_view(resource=ParameterResource),
         name=NAME_PREFIX + 'parameter_detail'),
-    url(r'^adapter/$',
-        AdapterChoiceView.as_view(),
-        name=NAME_PREFIX + 'adapter_choice'),
-    url(r'^adapter/(?P<fews_norm_source_slug>[-\w]+)/$',
-        AdapterView.as_view(adapter=AdapterFewsNorm),
-        name=NAME_PREFIX + 'adapter'),
-    url(r'^adapter/(?P<fews_norm_source_slug>[-\w]+)/(?P<adapter_function>.*)/$',
-        AdapterView.as_view(adapter=AdapterFewsNorm),
-        name=NAME_PREFIX + 'adapter'),
     )

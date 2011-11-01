@@ -210,6 +210,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """
         location = self.fewsnorm_source.o(Locations).get(id=identifier['ident'])
         serieskey_filter = {'locationkey': location, 'parameterkey': self.parameter}
+        print self.fewsnorm_source.o(TimeseriesKeys).filter(**serieskey_filter)
         serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(**serieskey_filter)
 
         timeseries_filter = {'serieskey': serieskey,
@@ -230,6 +231,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """
         Create graph of given parameters
         for all locations in identifiers object.
+
         """
         today = datetime.datetime.now()
         graph = Graph(start_date, end_date,
@@ -252,8 +254,11 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                 plot_style = 'o-'
             else:
                 plot_style = '-'
-            graph.axes.plot(dates, values, plot_style,
-                            lw=1, label=identifier['ident'])
+
+            # graph.axes.plot(dates, values, plot_style,
+            #                 lw=1, label=identifier['ident'])
+            graph.axes.bar(dates, values, plot_style,
+                            width=0, label=identifier['ident'])
             graph.axes.set_ylabel(self._unit())
 
             graph.legend()

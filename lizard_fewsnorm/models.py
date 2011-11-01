@@ -28,43 +28,8 @@ class Users(models.Model):
         db_table = u'users'
         managed = False
 
-
-# class GeometryColumns(models.Model):
-#     f_table_catalog = models.CharField(max_length=256)
-#     f_table_schema = models.CharField(max_length=256)
-#     f_table_name = models.CharField(max_length=256)
-#     f_geometry_column = models.CharField(max_length=256)
-#     coord_dimension = models.IntegerField()
-#     srid = models.IntegerField()
-#     type = models.CharField(max_length=30)
-#     class Meta:
-#         db_table = u'geometry_columns'
-#         managed = False
-
-
-# class GeographyColumns(models.Model):
-#     f_table_catalog = models.TextField() # This field type is a guess.
-#     f_table_schema = models.TextField() # This field type is a guess.
-#     f_table_name = models.TextField() # This field type is a guess.
-#     f_geography_column = models.TextField() # This field type is a guess.
-#     coord_dimension = models.IntegerField()
-#     srid = models.IntegerField()
-#     type = models.TextField()
-#     class Meta:
-#         db_table = u'geography_columns'
-#         managed = False
-
-
-# class SpatialRefSys(models.Model):
-#     srid = models.IntegerField(primary_key=True,
-#                                db_column='srid')
-#     auth_name = models.CharField(max_length=256)
-#     auth_srid = models.IntegerField()
-#     srtext = models.CharField(max_length=2048)
-#     proj4text = models.CharField(max_length=2048)
-#     class Meta:
-#         db_table = u'spatial_ref_sys'
-#         managed = False
+    def __unicode__(self):
+        return u'%s' % self.id
 
 
 class ParameterGroups(models.Model):
@@ -80,6 +45,9 @@ class ParameterGroups(models.Model):
     class Meta:
         db_table = u'parametergroups'
         managed = False
+
+    def __unicode__(self):
+        return u'%s' % self.id
 
 
 class Locations(models.Model):
@@ -106,6 +74,9 @@ class Locations(models.Model):
     class Meta:
         db_table = u'locations'
         managed = False
+
+    def __unicode__(self):
+        return u'%s' % self.id
 
 
 class Parameters(models.Model):
@@ -139,6 +110,9 @@ class Qualifiers(models.Model):
         db_table = u'qualifiers'
         managed = False
 
+    def __unicode__(self):
+        return u'%s' % self.id
+
 
 class QualifierSets(models.Model):
     qualifiersetkey = models.IntegerField(primary_key=True,
@@ -164,6 +138,9 @@ class QualifierSets(models.Model):
         db_table = u'qualifiersets'
         managed = False
 
+    def __unicode__(self):
+        return u'%s' % self.id
+
 
 class ModuleInstances(models.Model):
     moduleinstancekey = models.IntegerField(primary_key=True,
@@ -176,6 +153,9 @@ class ModuleInstances(models.Model):
         db_table = u'moduleinstances'
         managed = False
 
+    def __unicode__(self):
+        return u'%s' % self.id
+
 
 class Timesteps(models.Model):
     timestepkey = models.IntegerField(primary_key=True,
@@ -186,6 +166,9 @@ class Timesteps(models.Model):
     class Meta:
         db_table = u'timesteps'
         managed = False
+
+    def __unicode__(self):
+        return u'%s' % self.id
 
 
 class AggregationPeriods(models.Model):
@@ -198,6 +181,9 @@ class AggregationPeriods(models.Model):
     class Meta:
         db_table = u'aggregationperiods'
         managed = False
+
+    def __unicode__(self):
+        return u'%s' % self.id
 
 
 class TimeseriesKeys(models.Model):
@@ -224,6 +210,13 @@ class TimeseriesKeys(models.Model):
         db_table = u'timeserieskeys'
         managed = False
 
+    def __unicode__(self):
+        return u'%s %s %s %s' % (
+            self.locationkey,
+            self.parameterkey,
+            self.qualifiersetkey,
+            self.moduleinstancekey)
+
 
 class TimeseriesValuesAndFlags(composite.CompositePKModel):
     serieskey = models.ForeignKey(TimeseriesKeys,
@@ -237,6 +230,13 @@ class TimeseriesValuesAndFlags(composite.CompositePKModel):
         db_table = u'timeseriesvaluesandflags'
         managed = False
 
+    def __unicode__(self):
+        return u'%s %s %s %s' % (
+            self.id,
+            self.datetime,
+            self.scalarvalue,
+            self.flags)
+
 
 class TimeseriesComments(models.Model):
     serieskey = models.ForeignKey(TimeseriesKeys,
@@ -249,6 +249,9 @@ class TimeseriesComments(models.Model):
     class Meta:
         db_table = u'timeseriescomments'
         managed = False
+
+    def __unicode__(self):
+        return u'%s' % self.comments
 
 
 class TimeseriesManualEditsHistory(models.Model):
@@ -266,6 +269,9 @@ class TimeseriesManualEditsHistory(models.Model):
     class Meta:
         db_table = u'timeseriesmanualeditshistory'
         managed = False
+
+    def __unicode__(self):
+        return u'%s %s' % (self.serieskey, self.datetime)
 
 
 # Managed models that are in the default database.

@@ -46,8 +46,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         icon_style = {
             'icon': 'meetpuntPeil.png',
             'mask': ('meetpuntPeil_mask.png', ),
-            'color': (1.0, 0.5, 0.0, 1.0)
-            }
+            'color': (1.0, 0.5, 0.0, 1.0)}
         symbol_manager = SymbolManager(
             ICON_ORIGINALS,
             os.path.join(settings.MEDIA_ROOT, 'generated_icons'))
@@ -82,7 +81,8 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         Returns ParameterGroups object of self.parameter
         """
         groupkey = self.parameter.groupkey.groupkey
-        parameter_group = self.fewsnorm_source.o(ParameterGroups).get(groupkey=groupkey)
+        parameter_group = self.fewsnorm_source.o(ParameterGroups).get(
+            groupkey=groupkey)
         return parameter_group
 
     def _unit(self):
@@ -137,8 +137,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
             user=default_database['USER'],
             password=default_database['PASSWORD'],
             dbname=default_database['NAME'],
-            table=query.encode('ascii')
-            )
+            table=query.encode('ascii'))
 
         layer = mapnik.Layer("FewsNorm", coordinates.WGS84)
         layer.datasource = datasource
@@ -158,16 +157,17 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
             return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
         x, y = coordinates.google_to_wgs84(google_x, google_y)
-        pnt = GEOSGeometry(Point(x, y),srid=4326)
+        pnt = GEOSGeometry(Point(x, y), srid=4326)
         locations = GeoLocationCache.objects.filter(
             geometry__distance_lte=(pnt, D(m=radius * 0.3)),
             parameter=ParameterCache.objects.get(ident=self.parameter_id))
         result = []
         for location in locations:
-            location_google_x, location_google_y =  coordinates.wgs84_to_google(
+            location_google_x, location_google_y = coordinates.wgs84_to_google(
                 location.geometry.get_x(),
                 location.geometry.get_y())
-            dist = distance(google_x, google_y, location_google_x, location_google_y)
+            dist = distance(
+                google_x, google_y, location_google_x, location_google_y)
             logger.debug(location.__unicode__())
             result.append(
                 {'distance': dist,
@@ -178,10 +178,10 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                  'google_coords': (location_google_x, location_google_y)})
         return result
 
-    def value_aggregate(self, identifier, aggregate_functions,
-                        start_date=None, end_date=None):
-        return self.value_aggregate_default(
-            identifier, aggregate_functions_start_date, end_date)
+    # def value_aggregate(self, identifier, aggregate_functions,
+    #                     start_date=None, end_date=None):
+    #     return self.value_aggregate_default(
+    #         identifier, aggregate_functions_start_date, end_date)
 
     def location(self, ident, layout=None):
         """
@@ -201,22 +201,25 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
     def values(self, identifier, start_date, end_date):
         """
         Selects timeseries of given location and parameter:
-        - look up fewsnorm source in FewsNormSource with self.fews_norm_source_slug
+        - look up fewsnorm source in FewsNormSource with
+          self.fews_norm_source_slug
         - look up parameter in Parameters with self.parameter_id
         - foor each location in identifiers
            - look up location im Locations with identifier
-           - look up timeserieskey in TimeseriesKey with location and paremater
+           - look up timeserieskey in TimeseriesKey with location and parameter
            - look up timeseries with timeserieskey
         """
         location = self.fewsnorm_source.o(Locations).get(id=identifier['ident'])
-        serieskey_filter = {'locationkey': location, 'parameterkey': self.parameter}
-        print self.fewsnorm_source.o(TimeseriesKeys).filter(**serieskey_filter)
-        serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(**serieskey_filter)
+        serieskey_filter = {
+            'locationkey': location, 'parameterkey': self.parameter}
+        serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(
+            **serieskey_filter)
 
         timeseries_filter = {'serieskey': serieskey,
                              'datetime__gte': start_date,
                              'datetime__lte': end_date}
-        timeseriedata = self.fewsnorm_source.o(TimeseriesValuesAndFlags).order_by(
+        timeseriedata = self.fewsnorm_source.o(
+            TimeseriesValuesAndFlags).order_by(
             "datetime").filter(**timeseries_filter)
         result = []
         for timeserie_row in timeseriedata:
@@ -239,9 +242,9 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         graph.axes.grid(True)
         graph.add_today()
         # Draw graph lines with extra's
-        title = None
+        #title = None
         y_min, y_max = None, None
-        legend = None
+        #legend = None
 
         for identifier in identifiers:
             timeseriesdata = self.values(identifier, start_date, end_date)
@@ -266,10 +269,8 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
 
         return graph.http_png()
 
-
     def html(self, snippet_group=None, identifiers=None, layout_options=None):
         return self.html_default(
             snippet_group=snippet_group,
             identifiers=identifiers,
             layout_options=layout_options)
-

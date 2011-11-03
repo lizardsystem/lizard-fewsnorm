@@ -5,6 +5,8 @@ Changelog of lizard-fewsnorm
 0.1 (unreleased)
 ----------------
 
+- Added extra horizontal lines for bar charts.
+
 - Activated layout_extra parameter in image(..).
 
 - Edited image to plot bar charts only for equidistant timeseries.

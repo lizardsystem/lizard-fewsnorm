@@ -328,11 +328,10 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
               width=None, height=None, layout_extra=None):
         """
         Create graph of given parameters
-        for all locations in identifiers object.
+        for first identifier in identifiers object.
         Plots lines and bar charts depends on layout_extra['type'].
         Draws bar charts only for equidistant timeseries.
         """
-
         if layout_extra == None or len(layout_extra) <= 0:
             layout_extra={"lines": [{"style": "-", "y-position": 1.97,
                                      "color": "red", "width": 3, "name": "L1"},
@@ -352,6 +351,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         y_min, y_max = None, None
         #legend = None
         for identifier in identifiers:
+
             fewsnorm_source = self._fewsnorm_source(identifier['ident'])
             timeseriesdata = self.values(
                 identifier, start_date, end_date,
@@ -378,15 +378,13 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                     graph.axes.bar(dates, values,
                                    edgecolor=random.choice(color_list),
                                    width=bar_width, label=identifier['ident'])
+                for line in layout_extra.get('lines'):
+                    graph.axes.axhline(y=line.get('y-position'),
+                                       ls=line.get('style'),
+                                       color=line.get('color'),
+                                       lw=line.get('width'),
+                                       label=line.get('name'))
             break
-
-        # plot extra horizomtal lines
-        for line in layout_extra.get('lines'):
-            graph.axes.axhline(y=line.get('y-position'),
-                               ls=line.get('style'),
-                               color=line.get('color'),
-                               lw=line.get('width'),
-                               label=line.get('name'))
 
         graph.axes.set_ylabel(AdapterFewsNorm._unit(fewsnorm_source, self.parameter_id))
 

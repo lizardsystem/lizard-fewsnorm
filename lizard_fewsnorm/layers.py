@@ -2,6 +2,8 @@ import os
 import mapnik
 import math
 import datetime
+import random
+import numpy
 
 from django.conf import settings
 from django.contrib.gis.geos import Point
@@ -17,6 +19,7 @@ from lizard_fewsnorm.models import Parameters
 from lizard_fewsnorm.models import ParameterGroups
 from lizard_fewsnorm.models import Locations
 from lizard_fewsnorm.models import TimeseriesKeys
+from lizard_fewsnorm.models import Timesteps
 from lizard_fewsnorm.models import TimeseriesValuesAndFlags
 
 from lizard_map.models import ICON_ORIGINALS
@@ -25,6 +28,10 @@ from lizard_map.adapter import Graph
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+TIME_STEPS = {'NETS': None,
+              'SETS1440': 1440}
 
 
 class AdapterFewsNorm(WorkspaceItemAdapter):
@@ -94,6 +101,34 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
             return unit
         else:
             return "UNKOWN"
+
+    def _serieskey(self, identifier):
+        location = self.fewsnorm_source.o(Locations).get(id=identifier['ident'])
+        serieskey_filter = {
+            'locationkey': location, 'parameterkey': self.parameter}
+        # serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(
+        #     **serieskey_filter)
+        try:
+            serieskey = self.fewsnorm_source.o(TimeseriesKeys).filter(
+            **serieskey_filter)[0]
+        except:
+            serieskey = None
+        return serieskey
+
+    def _timestep(self, identifier):
+        """
+        Returns value of matched timestep in minutes
+        otherwise returns 0.
+        """
+        timestepkey = self.fewsnorm_source.o(TimeseriesKeys).get(
+            serieskey=self._serieskey(identifier).serieskey).timestepkey
+        timestep = self.fewsnorm_source.o(Timesteps).get(
+            timestepkey=timestepkey.timestepkey)
+        print "+++++++++++++++++++++++++++++++++++++++"
+        if TIME_STEPS.has_key(timestep.id):
+            return TIME_STEPS[timestep.id]
+        else:
+            return 0
 
     def layer(self, layer_ids=None, request=None):
         """Generate layers and styles
@@ -209,11 +244,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
            - look up timeserieskey in TimeseriesKey with location and parameter
            - look up timeseries with timeserieskey
         """
-        location = self.fewsnorm_source.o(Locations).get(id=identifier['ident'])
-        serieskey_filter = {
-            'locationkey': location, 'parameterkey': self.parameter}
-        serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(
-            **serieskey_filter)
+        serieskey = self._serieskey(identifier)
 
         timeseries_filter = {'serieskey': serieskey,
                              'datetime__gte': start_date,
@@ -229,6 +260,19 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                     })
         return result
 
+    def _plot_bar(self, graph, dates, values, identifier, start_date, end_date):
+        """
+        Calculates the width of bar and bar chart only for equidistant timeseries.
+        """
+
+        time_delta = (end_date - start_date).days
+        timestep = self._timestep(identifier)
+        if time_delta > 0 and timestep != None:
+            bar_width = timestep / time_delta / 24
+            graph.axes.bar(dates, values, edgecolor=random.choice(colorList),
+                           width=bar_width, label=identifier['ident'])
+
+
     def image(self, identifiers=None, start_date=None, end_date=None,
               width=None, height=None, layout_extra=None):
         """
@@ -236,6 +280,11 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         for all locations in identifiers object.
 
         """
+        color_list = ["blue", "red", "green", "black", "yellow", "magenta", "orange"]
+        graph_options = {
+            "type": "bar",
+            "colors": color_list}
+
         today = datetime.datetime.now()
         graph = Graph(start_date, end_date,
                       width=width, height=height, today=today)
@@ -245,7 +294,6 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         #title = None
         y_min, y_max = None, None
         #legend = None
-
         for identifier in identifiers:
             timeseriesdata = self.values(identifier, start_date, end_date)
             dates = []
@@ -257,11 +305,18 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                 plot_style = 'o-'
             else:
                 plot_style = '-'
+            values = [1, 2, 1, 2, 1, 2, 1, 3, 4, 2]
+            if graph_options["type"]=="line":
+                graph.axes.plot(dates, values, plot_style,
+                                lw=1, label=identifier['ident'])
+            else:
+                time_delta = (end_date - start_date).days
+                timestep = self._timestep(identifier)
+                if time_delta > 0 and timestep != None:
+                    bar_width = (float(timestep)/60/24) / float(time_delta)
+                    graph.axes.bar(dates, values, edgecolor=random.choice(color_list),
+                                   width=bar_width, label=identifier['ident'])
 
-            # graph.axes.plot(dates, values, plot_style,
-            #                 lw=1, label=identifier['ident'])
-            graph.axes.bar(dates, values, plot_style,
-                            width=0, label=identifier['ident'])
             graph.axes.set_ylabel(self._unit())
 
             graph.legend()

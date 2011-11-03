@@ -10,7 +10,6 @@ from django.contrib.gis.measure import D
 
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
-from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
 from lizard_fewsnorm.models import ParameterCache
 from lizard_fewsnorm.models import Parameters
@@ -28,21 +27,33 @@ logger = logging.getLogger(__name__)
 
 
 class AdapterFewsNorm(WorkspaceItemAdapter):
+    """
+    Adapter for fewsnorm databases.
+
+    - parameter_id is needed for search and layer. It is provided in
+      the identifier for image.
+
+    - optionally provide module_id, it is not used yet.
+
+    - optionally provide fews_norm_source_slug when using the layer
+      function (should be made optional in layer as well).
+    """
+
     def __init__(self, *args, **kwargs):
         """
-        TODO: make fews_norm_source_slug optional (or leave it away).
         """
         super(AdapterFewsNorm, self).__init__(*args, **kwargs)
         self.parameter_id = self.layer_arguments.get('parameter_id', None)
         self.module_id = self.layer_arguments.get('module_id', None)
         self.fews_norm_source_slug = self.layer_arguments.get(
             'fews_norm_source_slug', None)
-        self.fewsnorm_source = FewsNormSource.objects.get(
-            slug=self.fews_norm_source_slug)
-        self.parameter = self.fewsnorm_source.o(Parameters).get(
-            id=self.parameter_id)
 
     def _default_mapnik_style(self):
+        """
+        Default implementation, not using any external django objects.
+
+        TODO: make configurable.
+        """
         icon_style = {
             'icon': 'meetpuntPeil.png',
             'mask': ('meetpuntPeil_mask.png', ),
@@ -76,24 +87,20 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
 
         return point_style
 
-    def _parameter_group(self):
+    @classmethod
+    def _unit(cls, fewsnorm_source, parameter_id):
         """
-        Returns ParameterGroups object of self.parameter
+        Return parameter group unit
         """
-        groupkey = self.parameter.groupkey.groupkey
-        parameter_group = self.fewsnorm_source.o(ParameterGroups).get(
+        parameter = fewsnorm_source.o(Parameters).get(
+            id=parameter_id)
+        groupkey = parameter.groupkey.groupkey
+        parameter_group = fewsnorm_source.o(ParameterGroups).get(
             groupkey=groupkey)
-        return parameter_group
-
-    def _unit(self):
-        """
-        Returns parameter group unit
-        """
-        unit = self._parameter_group().unit
-        if unit:
-            return unit
+        if parameter_group.unit:
+            return parameter_group.unit
         else:
-            return "UNKOWN"
+            return "UNKNOWN"
 
     def layer(self, layer_ids=None, request=None):
         """Generate layers and styles
@@ -153,22 +160,33 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
     def identifiers(self):
         """Return all possible identifiers in a list.
         """
-        return [
-            {'ident': location.ident} for location in
-            GeoLocationCache.objects.all()]
+        result = []
+        for location in GeoLocationCache.objects.all():
+            for parameter in location.parameter.all():
+                result.append({
+                        'ident': location.ident,
+                        'parameter_id': parameter.ident})
+        return result
 
     def search(self, google_x, google_y, radius=None):
         """Search by coordinates. Return list of dicts for matching
         items.
+
+        Assumes that the geometries are stored as wgs84.
+
+        Note that self.parameter_id must be filled.
         """
         def distance(x1, y1, x2, y2):
             return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-        x, y = coordinates.google_to_wgs84(google_x, google_y)
-        pnt = GEOSGeometry(Point(x, y), srid=4326)
+        #x, y = coordinates.google_to_wgs84(google_x, google_y)
+        #pnt = GEOSGeometry(Point(x, y), srid=4326)
+        pnt = GEOSGeometry(Point(google_x, google_y), srid=900913)
+        parameter = ParameterCache.objects.get(ident=self.parameter_id)
         locations = GeoLocationCache.objects.filter(
             geometry__distance_lte=(pnt, D(m=radius * 0.3)),
-            parameter=ParameterCache.objects.get(ident=self.parameter_id))
+            parameter=parameter)
+
         result = []
         for location in locations:
             location_google_x, location_google_y = coordinates.wgs84_to_google(
@@ -182,7 +200,9 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                  'name': location.__unicode__(),
                  'shortname': location.shortname,
                  'workspace_item': self.workspace_item,
-                 'identifier': {'ident': location.ident},
+                 'identifier': {
+                        'ident': location.ident,
+                        'parameter_id': self.parameter_id},
                  'google_coords': (location_google_x, location_google_y)})
         return result
 
@@ -191,7 +211,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
     #     return self.value_aggregate_default(
     #         identifier, aggregate_functions_start_date, end_date)
 
-    def location(self, ident, layout=None):
+    def location(self, ident, parameter_id, layout=None):
         """
         {'object': <...>,
         'google_x': x coordinate in google,
@@ -204,31 +224,58 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         return {'name': location.__unicode__(),
                 'shortname': location.shortname,
                 'workspace_item': self.workspace_item,
-                'identifier': {'location': location.ident}}
+                'identifier': {'ident': ident,
+                               'parameter_id': parameter_id},
+                'object': location}
 
-    def values(self, identifier, start_date, end_date):
+    @classmethod
+    def _fewsnorm_source(cls, ident):
+        """Look up fewsnorm_source object using provided location ident.
         """
-        Selects timeseries of given location and parameter:
+        location_cache = GeoLocationCache.objects.get(
+            ident=ident)
+        fewsnorm_source = location_cache.fews_norm_source
+        return fewsnorm_source
+
+    def values(self, identifier, start_date, end_date, fewsnorm_source=None):
+        """
+        Return timeseries data of given location and parameter.
+
+        Optionally provide fewsnorm_source.
+
         - look up fewsnorm source in FewsNormSource with
           self.fews_norm_source_slug
+
         - look up parameter in Parameters with self.parameter_id
+
         - foor each location in identifiers
+
            - look up location im Locations with identifier
-           - look up timeserieskey in TimeseriesKey with location and parameter
+
+           - look up timeserieskey in TimeseriesKey with location and
+             parameter
+
            - look up timeseries with timeserieskey
         """
-        location = self.fewsnorm_source.o(Locations).get(id=identifier['ident'])
-        serieskey_filter = {
-            'locationkey': location, 'parameterkey': self.parameter}
-        serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(
-            **serieskey_filter)
 
-        timeseries_filter = {'serieskey': serieskey,
-                             'datetime__gte': start_date,
-                             'datetime__lte': end_date}
-        timeseriedata = self.fewsnorm_source.o(
+        # Go from default database to fewsnorm database.
+        if fewsnorm_source is None:
+            fewsnorm_source = AdapterFewsNorm._fewsnorm_source(
+                identifier['ident'])
+
+        location = fewsnorm_source.o(
+            Locations).get(id=identifier['ident'])
+        parameter = fewsnorm_source.o(
+            Parameters).get(id=identifier['parameter_id'])
+        serieskey = fewsnorm_source.o(TimeseriesKeys).get(
+            locationkey=location, parameterkey=parameter)
+
+        timeseriedata = fewsnorm_source.o(
             TimeseriesValuesAndFlags).order_by(
-            "datetime").filter(**timeseries_filter)
+            "datetime").filter(
+                serieskey=serieskey,
+                datetime__gte=start_date,
+                datetime__lte=end_date)
         result = []
         for timeserie_row in timeseriedata:
             result.append({
@@ -254,7 +301,13 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         #legend = None
 
         for identifier in identifiers:
-            timeseriesdata = self.values(identifier, start_date, end_date)
+            fewsnorm_source = self._fewsnorm_source(identifier['ident'])
+            timeseriesdata = self.values(
+                identifier, start_date, end_date,
+                fewsnorm_source=fewsnorm_source)
+            y_label = AdapterFewsNorm._unit(
+                fewsnorm_source, identifier['parameter_id'])
+
             dates = []
             values = []
             for series_row in timeseriesdata:
@@ -266,7 +319,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                 plot_style = '-'
             graph.axes.plot(dates, values, plot_style,
                             lw=1, label=identifier['ident'])
-            graph.axes.set_ylabel(self._unit())
+            graph.axes.set_ylabel(y_label)
 
             graph.legend()
             graph.axes.legend_.draw_frame(False)

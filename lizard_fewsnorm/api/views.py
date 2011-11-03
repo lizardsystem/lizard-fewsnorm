@@ -51,11 +51,18 @@ class IdentifierView(View):
         result = []
         for identifier in AdapterFewsNorm.identifiers():
             serialized_identifier = adapter_serialize(identifier)
-            img_url_id = '%s?identifier=%s' % (img_url, serialized_identifier)
-            values_csv_url_id = '%s?identifier=%s' % (
-                values_csv_url, serialized_identifier)
-            values_html_url_id = '%s?identifier=%s' % (
-                values_html_url, serialized_identifier)
+            url_params = {
+                'identifier': serialized_identifier,
+                'adapter_layer_json': adapter_serialize({
+                        'parameter_id': identifier['parameter_id'],
+                        'module_id': None,
+                        'fews_norm_source_slug': '',
+                        })}
+            url_params_str = '&'.join([
+                    '%s=%s' % (k, v) for k, v in url_params.items()])
+            img_url_id = '%s?%s' % (img_url, url_params_str)
+            values_csv_url_id = '%s?%s' % (values_csv_url, url_params_str)
+            values_html_url_id = '%s?%s' % (values_html_url, url_params_str)
             result.append({
                     'identifier': serialized_identifier,
                     'img_url': img_url_id,

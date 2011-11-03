@@ -364,7 +364,6 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
             for series_row in timeseriesdata:
                 dates.append(series_row['datetime'])
                 values.append(series_row['value'])
-            print values
             if layout_extra.get('type')=="line":
                 graph.axes.plot(dates,
                                 values,

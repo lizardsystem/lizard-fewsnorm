@@ -34,6 +34,16 @@ class RootView(View):
 class IdentifierView(View):
     """
     Identifier
+
+    Provide the following url parameters in img_url, values_csv_url or
+    values_html_url:
+
+    - adapter_class (already filled in)
+    - output_type for values, 'csv' or 'html'
+    - identifier (multiple allowed. each identifier has an (location)
+      ident and parameter_id)
+    - adapter_layer_json (already filled in)
+    - dt_start, dt_end: datetime start and datetime end in iso8601 format
     """
     def get(self, request, *args, **kwargs):
         img_url = reverse(

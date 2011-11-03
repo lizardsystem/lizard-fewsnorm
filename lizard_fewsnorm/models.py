@@ -29,44 +29,6 @@ class Users(models.Model):
         managed = False
 
 
-# class GeometryColumns(models.Model):
-#     f_table_catalog = models.CharField(max_length=256)
-#     f_table_schema = models.CharField(max_length=256)
-#     f_table_name = models.CharField(max_length=256)
-#     f_geometry_column = models.CharField(max_length=256)
-#     coord_dimension = models.IntegerField()
-#     srid = models.IntegerField()
-#     type = models.CharField(max_length=30)
-#     class Meta:
-#         db_table = u'geometry_columns'
-#         managed = False
-
-
-# class GeographyColumns(models.Model):
-#     f_table_catalog = models.TextField() # This field type is a guess.
-#     f_table_schema = models.TextField() # This field type is a guess.
-#     f_table_name = models.TextField() # This field type is a guess.
-#     f_geography_column = models.TextField() # This field type is a guess.
-#     coord_dimension = models.IntegerField()
-#     srid = models.IntegerField()
-#     type = models.TextField()
-#     class Meta:
-#         db_table = u'geography_columns'
-#         managed = False
-
-
-# class SpatialRefSys(models.Model):
-#     srid = models.IntegerField(primary_key=True,
-#                                db_column='srid')
-#     auth_name = models.CharField(max_length=256)
-#     auth_srid = models.IntegerField()
-#     srtext = models.CharField(max_length=2048)
-#     proj4text = models.CharField(max_length=2048)
-#     class Meta:
-#         db_table = u'spatial_ref_sys'
-#         managed = False
-
-
 class ParameterGroups(models.Model):
     groupkey = models.IntegerField(primary_key=True,
                                    db_column='groupkey')
@@ -285,10 +247,17 @@ class ModuleCache(models.Model):
     ident = models.CharField(max_length=64)
 
     def __unicode__(self):
-        return '%s' % self.ident
+        return u'%s' % self.ident
 
     # def api_url(self):
     #     return reverse('lizard_fewsnorm_api_module')
+
+
+class TimeStepCache(models.Model):
+    ident = models.CharField(max_length=64)
+
+    def __unicode__(self):
+        return u'%s' % self.ident
 
 
 class GeoLocationCache(GeoObject):
@@ -301,9 +270,11 @@ class GeoLocationCache(GeoObject):
     icon = models.CharField(max_length=64)
     tooltip = models.CharField(max_length=64)
     parameter = models.ManyToManyField(
-        ParameterCache, null=True, blank=True)
+        ParameterCache, null=True, blank=True, through='TimeSeriesCache')
     module = models.ManyToManyField(
-        ModuleCache, null=True, blank=True)
+        ModuleCache, null=True, blank=True, through='TimeSeriesCache')
+    timestep = models.ManyToManyField(
+        TimeStepCache, null=True, blank=True, through='TimeSeriesCache')
     objects = models.GeoManager()
 
     def __unicode__(self):
@@ -312,6 +283,25 @@ class GeoLocationCache(GeoObject):
     def api_url(self):
         return reverse('lizard_fewsnorm_api_location_detail',
                        kwargs={'ident': self.ident})
+
+
+class TimeSeriesCache(models.Model):
+    """
+    Cache time series objects from all sources.
+
+    Use this object as an entrypoint to fetch data.
+    """
+    geolocationcache = models.ForeignKey(GeoLocationCache)
+    parametercache = models.ForeignKey(ParameterCache)
+    modulecache = models.ForeignKey(ModuleCache)
+    timestepcache = models.ForeignKey(TimeStepCache)
+
+    def __unicode__(self):
+        return 'loc %s, par %s, mod %s, tstep %s' % (
+            self.geolocationcache,
+            self.parametercache,
+            self.modulecache,
+            self.timestepcache)
 
 
 class FewsNormSource(models.Model):
@@ -366,7 +356,20 @@ class FewsNormSource(models.Model):
         return modules
 
     @transaction.commit_on_success
-    def synchronize_location_cache(self, user_name, parameters, modules):
+    def synchronize_time_step_cache(self):
+        """
+        Fill TimeStepCache.
+        """
+        time_steps = {}
+        for time_step in self.o(Timesteps).all():
+            time_step_cache, _ = TimeStepCache.objects.get_or_create(
+                ident=time_step.id)
+            time_steps[time_step_cache.ident] = time_step_cache
+        return time_steps
+
+    @transaction.commit_on_success
+    def synchronize_location_cache(
+        self, user_name):
         """
         Fill GeoLocationCache.
 
@@ -376,6 +379,7 @@ class FewsNormSource(models.Model):
         self._empty_cache()  # For GeoLocationCache
         source_locations = self.source_locations()
         geo_object_group = self.get_or_create_geoobjectgroup(user_name)
+        locations = {}
         for location in source_locations:
             logger.debug('processing location.id: %s' % location.id)
             wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
@@ -389,18 +393,30 @@ class FewsNormSource(models.Model):
                 geo_object_group=geo_object_group,
                 geometry=GEOSGeometry(Point(wgs84_x, wgs84_y), srid=4326))
             geo_location_cache.save()
+            locations[geo_location_cache.ident] = geo_location_cache
+        return locations
 
-            timeserieskeys = location.timeserieskeys_set.all()
-            for single_timeserieskeys in timeserieskeys:
-                geo_location_cache.parameter.add(
-                    parameters[single_timeserieskeys.parameterkey.id])
-                geo_location_cache.module.add(
-                    modules[single_timeserieskeys.moduleinstancekey.id])
-            if not timeserieskeys:
-                logger.warning(
-                    'No timeseries associated with location %s, '
-                    'the location will not be visible in Lizard.' %
-                    location.id)
+    def synchronize_time_series_cache(
+        self, locations, parameters, modules, time_steps):
+
+        timeserieskeys = self.o(TimeseriesKeys).all()
+        for single_timeserieskeys in timeserieskeys:
+            logger.debug('processing timeseries: %s %s %s %s' % (
+                    single_timeserieskeys.locationkey.id,
+                    single_timeserieskeys.parameterkey.id,
+                    single_timeserieskeys.moduleinstancekey.id,
+                    single_timeserieskeys.timestepkey.id))
+            time_series_cache = TimeSeriesCache(
+                geolocationcache=locations[
+                    single_timeserieskeys.locationkey.id],
+                parametercache=parameters[
+                    single_timeserieskeys.parameterkey.id],
+                modulecache=modules[
+                    single_timeserieskeys.moduleinstancekey.id],
+                timestepcache=time_steps[
+                    single_timeserieskeys.timestepkey.id],
+                )
+            time_series_cache.save()
 
     def __unicode__(self):
         return '%s (%s)' % (self.name, self.database_name)

@@ -54,5 +54,14 @@ class Command(BaseCommand):
             modules = source.synchronize_module_cache()
 
             logger.debug(
+                'Creating TimeStepCache for fewsnorm %s...', source.name)
+            time_steps = source.synchronize_time_step_cache()
+
+            logger.debug(
                 'Creating GeoLocationCache for fewsnorm %s...', source.name)
-            source.synchronize_location_cache(user_name, parameters, modules)
+            locations = source.synchronize_location_cache(user_name)
+
+            logger.debug(
+                'Creating TimeSeriesCache for fewsnorm %s...', source.name)
+            source.synchronize_time_series_cache(
+                locations, parameters, modules, time_steps)

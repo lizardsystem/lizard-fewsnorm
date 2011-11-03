@@ -4,6 +4,8 @@ from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
 from lizard_fewsnorm.models import ModuleCache
 from lizard_fewsnorm.models import ParameterCache
+from lizard_fewsnorm.models import TimeStepCache
+from lizard_fewsnorm.models import TimeSeriesCache
 
 # These models don't come from the default database.
 # from lizard_fewsnorm.models import Users
@@ -28,3 +30,5 @@ admin.site.register(FewsNormSource, FewsNormSourceAdmin)
 admin.site.register(GeoLocationCache)
 admin.site.register(ModuleCache)
 admin.site.register(ParameterCache)
+admin.site.register(TimeStepCache)
+admin.site.register(TimeSeriesCache)

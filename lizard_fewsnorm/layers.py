@@ -12,7 +12,6 @@ from django.contrib.gis.measure import D
 
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
-from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
 from lizard_fewsnorm.models import ParameterCache
 from lizard_fewsnorm.models import Parameters
@@ -30,26 +29,73 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-TIME_STEPS = {'NETS': None,
-              'SETS1440': 1440}
+TIME_STEPS = {'SETS1440': 1440}
 
 
 class AdapterFewsNorm(WorkspaceItemAdapter):
+    """
+    Adapter for fewsnorm databases.
+
+    - parameter_id is needed for search and layer. It is provided in
+      the identifier for image.
+
+    - optionally provide module_id, it is not used yet.
+
+    - optionally provide fews_norm_source_slug when using the layer
+      function (should be made optional in layer as well).
+    """
+
+    @classmethod
+    def identifiers(self):
+        """Return all possible identifiers in a list.
+        """
+        result = []
+        for location in GeoLocationCache.objects.all():
+            for parameter in location.parameter.all():
+                result.append({
+                        'ident': location.ident,
+                        'parameter_id': parameter.ident})
+        return result
+
+    @classmethod
+    def _unit(cls, fewsnorm_source, parameter_id):
+        """
+        Return parameter group unit
+        """
+        parameter = fewsnorm_source.o(Parameters).get(
+            id=parameter_id)
+        groupkey = parameter.groupkey.groupkey
+        parameter_group = fewsnorm_source.o(ParameterGroups).get(
+            groupkey=groupkey)
+        if parameter_group.unit:
+            return parameter_group.unit
+        else:
+            return "UNKNOWN"
+
+    @classmethod
+    def _fewsnorm_source(cls, ident):
+        """Look up fewsnorm_source object using provided location ident.
+        """
+        location_cache = GeoLocationCache.objects.get(
+            ident=ident)
+        fewsnorm_source = location_cache.fews_norm_source
+        return fewsnorm_source
+
     def __init__(self, *args, **kwargs):
         """
-        TODO: make fews_norm_source_slug optional (or leave it away).
         """
         super(AdapterFewsNorm, self).__init__(*args, **kwargs)
         self.parameter_id = self.layer_arguments.get('parameter_id', None)
         self.module_id = self.layer_arguments.get('module_id', None)
         self.fews_norm_source_slug = self.layer_arguments.get(
             'fews_norm_source_slug', None)
-        self.fewsnorm_source = FewsNormSource.objects.get(
-            slug=self.fews_norm_source_slug)
-        self.parameter = self.fewsnorm_source.o(Parameters).get(
-            id=self.parameter_id)
 
     def _default_mapnik_style(self):
+        """
+        Default implementation, not using any external django objects.
+
+        TODO: make configurable.
+        """
         icon_style = {
             'icon': 'meetpuntPeil.png',
             'mask': ('meetpuntPeil_mask.png', ),
@@ -83,52 +129,27 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
 
         return point_style
 
-    def _parameter_group(self):
-        """
-        Returns ParameterGroups object of self.parameter
-        """
-        groupkey = self.parameter.groupkey.groupkey
-        parameter_group = self.fewsnorm_source.o(ParameterGroups).get(
-            groupkey=groupkey)
-        return parameter_group
+    def _serieskey(self, identifier, fewsnorm_source):
+        location = fewsnorm_source.o(Locations).get(id=identifier['ident'])
 
-    def _unit(self):
-        """
-        Returns parameter group unit
-        """
-        unit = self._parameter_group().unit
-        if unit:
-            return unit
-        else:
-            return "UNKOWN"
-
-    def _serieskey(self, identifier):
-        location = self.fewsnorm_source.o(Locations).get(id=identifier['ident'])
-        serieskey_filter = {
-            'locationkey': location, 'parameterkey': self.parameter}
-        # serieskey = self.fewsnorm_source.o(TimeseriesKeys).get(
-        #     **serieskey_filter)
-        try:
-            serieskey = self.fewsnorm_source.o(TimeseriesKeys).filter(
-            **serieskey_filter)[0]
-        except:
-            serieskey = None
+        # try:
+        serieskey = fewsnorm_source.o(TimeseriesKeys).get(
+            locationkey=location,
+            parameterkey__id=self.parameter_id)
+        # except dsfsdffd:
+        #     serieskey = None
         return serieskey
 
-    def _timestep(self, identifier):
+    def _timestep(self, identifier, fewsnorm_source):
         """
         Returns value of matched timestep in minutes
         otherwise returns 0.
         """
-        timestepkey = self.fewsnorm_source.o(TimeseriesKeys).get(
-            serieskey=self._serieskey(identifier).serieskey).timestepkey
-        timestep = self.fewsnorm_source.o(Timesteps).get(
+        timestepkey = fewsnorm_source.o(TimeseriesKeys).get(
+            serieskey=self._serieskey(identifier, fewsnorm_source).serieskey).timestepkey
+        timestep = fewsnorm_source.o(Timesteps).get(
             timestepkey=timestepkey.timestepkey)
-        print "+++++++++++++++++++++++++++++++++++++++"
-        if TIME_STEPS.has_key(timestep.id):
-            return TIME_STEPS[timestep.id]
-        else:
-            return 0
+        return TIME_STEPS.get(timestep.id, None)
 
     def layer(self, layer_ids=None, request=None):
         """Generate layers and styles
@@ -187,15 +208,22 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
     def search(self, google_x, google_y, radius=None):
         """Search by coordinates. Return list of dicts for matching
         items.
+
+        Assumes that the geometries are stored as wgs84.
+
+        Note that self.parameter_id must be filled.
         """
         def distance(x1, y1, x2, y2):
             return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-        x, y = coordinates.google_to_wgs84(google_x, google_y)
-        pnt = GEOSGeometry(Point(x, y), srid=4326)
+        #x, y = coordinates.google_to_wgs84(google_x, google_y)
+        #pnt = GEOSGeometry(Point(x, y), srid=4326)
+        pnt = GEOSGeometry(Point(google_x, google_y), srid=900913)
+        parameter = ParameterCache.objects.get(ident=self.parameter_id)
         locations = GeoLocationCache.objects.filter(
             geometry__distance_lte=(pnt, D(m=radius * 0.3)),
-            parameter=ParameterCache.objects.get(ident=self.parameter_id))
+            parameter=parameter)
+
         result = []
         for location in locations:
             location_google_x, location_google_y = coordinates.wgs84_to_google(
@@ -209,7 +237,9 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                  'name': location.__unicode__(),
                  'shortname': location.shortname,
                  'workspace_item': self.workspace_item,
-                 'identifier': {'ident': location.ident},
+                 'identifier': {
+                        'ident': location.ident,
+                        'parameter_id': self.parameter_id},
                  'google_coords': (location_google_x, location_google_y)})
         return result
 
@@ -218,7 +248,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
     #     return self.value_aggregate_default(
     #         identifier, aggregate_functions_start_date, end_date)
 
-    def location(self, ident, layout=None):
+    def location(self, ident, parameter_id, layout=None):
         """
         {'object': <...>,
         'google_x': x coordinate in google,
@@ -231,27 +261,47 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         return {'name': location.__unicode__(),
                 'shortname': location.shortname,
                 'workspace_item': self.workspace_item,
-                'identifier': {'location': location.ident}}
+                'identifier': {'ident': ident,
+                               'parameter_id': parameter_id},
+                'object': location}
 
-    def values(self, identifier, start_date, end_date):
+    def values(self, identifier, start_date, end_date, fewsnorm_source=None):
         """
-        Selects timeseries of given location and parameter:
+        Return timeseries data of given location and parameter.
+
+        Optionally provide fewsnorm_source.
+
         - look up fewsnorm source in FewsNormSource with
           self.fews_norm_source_slug
+
         - look up parameter in Parameters with self.parameter_id
+
         - foor each location in identifiers
+
            - look up location im Locations with identifier
-           - look up timeserieskey in TimeseriesKey with location and parameter
+
+           - look up timeserieskey in TimeseriesKey with location and
+             parameter
+
            - look up timeseries with timeserieskey
         """
-        serieskey = self._serieskey(identifier)
+
+        # Go from default database to fewsnorm database.
+        if fewsnorm_source is None:
+            fewsnorm_source = AdapterFewsNorm._fewsnorm_source(
+                identifier['ident'])
+
+        serieskey = self._serieskey(identifier, fewsnorm_source)
 
         timeseries_filter = {'serieskey': serieskey,
                              'datetime__gte': start_date,
                              'datetime__lte': end_date}
-        timeseriedata = self.fewsnorm_source.o(
+        timeseriedata = fewsnorm_source.o(
             TimeseriesValuesAndFlags).order_by(
-            "datetime").filter(**timeseries_filter)
+            "datetime").filter(
+                serieskey=serieskey,
+                datetime__gte=start_date,
+                datetime__lte=end_date)
         result = []
         for timeserie_row in timeseriedata:
             result.append({
@@ -260,17 +310,18 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                     })
         return result
 
-    def _plot_bar(self, graph, dates, values, identifier, start_date, end_date):
-        """
-        Calculates the width of bar and bar chart only for equidistant timeseries.
-        """
+    # def _plot_bar(self, graph, dates, values, identifier, start_date, end_date):
+    #     """
+    #     Calculates the width of bar and bar chart only for equidistant timeseries.
+    #     """
 
-        time_delta = (end_date - start_date).days
-        timestep = self._timestep(identifier)
-        if time_delta > 0 and timestep != None:
-            bar_width = timestep / time_delta / 24
-            graph.axes.bar(dates, values, edgecolor=random.choice(colorList),
-                           width=bar_width, label=identifier['ident'])
+    #     time_delta = (end_date - start_date).days
+    #     timestep = self._timestep(identifier)
+    #     if time_delta > 0 and timestep != None:
+    #         bar_width = timestep / time_delta / 24
+    #         graph.axes.bar(dates, values, edgecolor=random.choice(colorList),
+    #                        width=bar_width, label=identifier['ident']
+    #                       )
 
 
     def image(self, identifiers=None, start_date=None, end_date=None,
@@ -278,12 +329,18 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """
         Create graph of given parameters
         for all locations in identifiers object.
-
+        Plots lines and bar charts depends on layout_extra['type'].
+        Draws bar charts only for equidistant timeseries.
         """
-        color_list = ["blue", "red", "green", "black", "yellow", "magenta", "orange"]
-        graph_options = {
-            "type": "bar",
-            "colors": color_list}
+
+        if layout_extra == None or len(layout_extra) <= 0:
+            layout_extra={"lines": [{"style": "-", "y-position": 1.97,
+                                     "color": "red", "width": 3, "name": "L1"},
+                                    {"style": "--", "y-position": 2.12,
+                                     "color": "green", "width": 3, "name": "L2"}],
+                          "type": "line",
+                          "style": '-',
+                          "width": 1}
 
         today = datetime.datetime.now()
         graph = Graph(start_date, end_date,
@@ -295,32 +352,47 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         y_min, y_max = None, None
         #legend = None
         for identifier in identifiers:
-            timeseriesdata = self.values(identifier, start_date, end_date)
+            fewsnorm_source = self._fewsnorm_source(identifier['ident'])
+            timeseriesdata = self.values(
+                identifier, start_date, end_date,
+                fewsnorm_source=fewsnorm_source)
+            y_label = AdapterFewsNorm._unit(
+                fewsnorm_source, identifier['parameter_id'])
+
             dates = []
             values = []
             for series_row in timeseriesdata:
                 dates.append(series_row['datetime'])
                 values.append(series_row['value'])
-            if len(values) < 30:
-                plot_style = 'o-'
-            else:
-                plot_style = '-'
-            values = [1, 2, 1, 2, 1, 2, 1, 3, 4, 2]
-            if graph_options["type"]=="line":
-                graph.axes.plot(dates, values, plot_style,
-                                lw=1, label=identifier['ident'])
-            else:
+            print values
+            if layout_extra.get('type')=="line":
+                graph.axes.plot(dates,
+                                values,
+                                ls=layout_extra.get('style'),
+                                lw=layout_extra.get('width'),
+                                label=identifier['ident'])
+            elif layout_extra.get('type')=="bar":
                 time_delta = (end_date - start_date).days
-                timestep = self._timestep(identifier)
+                timestep = self._timestep(identifier, fewsnorm_source)
                 if time_delta > 0 and timestep != None:
                     bar_width = (float(timestep)/60/24) / float(time_delta)
-                    graph.axes.bar(dates, values, edgecolor=random.choice(color_list),
+                    graph.axes.bar(dates, values,
+                                   edgecolor=random.choice(color_list),
                                    width=bar_width, label=identifier['ident'])
+            break
 
-            graph.axes.set_ylabel(self._unit())
+        # plot extra horizomtal lines
+        for line in layout_extra.get('lines'):
+            graph.axes.axhline(y=line.get('y-position'),
+                               ls=line.get('style'),
+                               color=line.get('color'),
+                               lw=line.get('width'),
+                               label=line.get('name'))
 
-            graph.legend()
-            graph.axes.legend_.draw_frame(False)
+        graph.axes.set_ylabel(AdapterFewsNorm._unit(fewsnorm_source, self.parameter_id))
+
+        graph.legend()
+        graph.axes.legend_.draw_frame(False)
 
         return graph.http_png()
 

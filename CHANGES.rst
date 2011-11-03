@@ -5,6 +5,12 @@ Changelog of lizard-fewsnorm
 0.1 (unreleased)
 ----------------
 
+- Activated layout_extra parameter in image(..).
+
+- Edited image to plot bar charts only for equidistant timeseries.
+
+- Started experimental REST API.
+
 - Implemented adapter functions search, location, image.
 
 - Added migrations.

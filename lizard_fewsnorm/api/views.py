@@ -5,6 +5,8 @@ from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
 from lizard_fewsnorm.models import ParameterCache
 
+from lizard_fewsnorm.layers import AdapterFewsNorm
+from lizard_map.adapter import adapter_serialize
 
 class RootView(View):
     """
@@ -12,9 +14,12 @@ class RootView(View):
     """
     def get(self, request):
         return {
-            'adapter': {
-                'name': 'adapter-fewsnorm',
-                'url': reverse("lizard_fewsnorm_api_adapter_choice")},
+            # 'adapter': {
+            #     'name': 'adapter-fewsnorm',
+            #     'url': reverse("lizard_fewsnorm_api_adapter_choice")},
+            'identifier': {
+                'name': 'identifier',
+                'url': reverse("lizard_fewsnorm_api_identifier")},
             'source': {
                 'name': 'source',
                 'url': reverse("lizard_fewsnorm_api_source_list")},
@@ -25,6 +30,46 @@ class RootView(View):
                 'name': 'parameter',
                 'url': reverse("lizard_fewsnorm_api_parameter")}
             }
+
+class IdentifierView(View):
+    """
+    Identifier
+    """
+    def get(self, request, *args, **kwargs):
+        img_url = reverse(
+            'lizard_map_adapter_image',
+            kwargs={'adapter_class': 'adapter_fewsnorm'})
+        values_csv_url = reverse(
+            'lizard_map_adapter_values',
+            kwargs={'adapter_class': 'adapter_fewsnorm',
+                    'output_type': 'csv'})
+        values_html_url = reverse(
+            'lizard_map_adapter_values',
+            kwargs={'adapter_class': 'adapter_fewsnorm',
+                    'output_type': 'html'})
+
+        result = []
+        for identifier in AdapterFewsNorm.identifiers():
+            serialized_identifier = adapter_serialize(identifier)
+            url_params = {
+                'identifier': serialized_identifier,
+                'adapter_layer_json': adapter_serialize({
+                        'parameter_id': identifier['parameter_id'],
+                        'module_id': None,
+                        'fews_norm_source_slug': '',
+                        })}
+            url_params_str = '&'.join([
+                    '%s=%s' % (k, v) for k, v in url_params.items()])
+            img_url_id = '%s?%s' % (img_url, url_params_str)
+            values_csv_url_id = '%s?%s' % (values_csv_url, url_params_str)
+            values_html_url_id = '%s?%s' % (values_html_url, url_params_str)
+            result.append({
+                    'identifier': serialized_identifier,
+                    'img_url': img_url_id,
+                    'values_csv_url': values_csv_url_id,
+                    'values_html_url': values_html_url_id,})
+        return result
+
 
 class LocationView(View):
     """

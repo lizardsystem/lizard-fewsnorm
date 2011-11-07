@@ -20,6 +20,7 @@ from lizard_fewsnorm.models import Locations
 from lizard_fewsnorm.models import TimeseriesKeys
 from lizard_fewsnorm.models import Timesteps
 from lizard_fewsnorm.models import TimeseriesValuesAndFlags
+from lizard_fewsnorm.models import TimeSeriesCache
 
 from lizard_map.models import ICON_ORIGINALS
 from lizard_map.symbol_manager import SymbolManager
@@ -50,11 +51,11 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """Return all possible identifiers in a list.
         """
         result = []
-        for location in GeoLocationCache.objects.all():
-            for parameter in location.parameter.all():
-                result.append({
-                        'ident': location.ident,
-                        'parameter_id': parameter.ident})
+        for timeserie in TimeSeriesCache.objects.all():
+            result.append({
+                    'ident': timeserie.geolocationcache.ident,
+                    'parameter_id': timeserie.parametercache.ident,
+                    'module_id': timeserie.modulecache.ident})
         return result
 
     @classmethod

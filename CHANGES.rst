@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.1 (unreleased)
+0.1 (2011-11-07)
 ----------------
 
 - Added extra horizontal lines for bar charts.

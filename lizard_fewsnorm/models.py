@@ -218,13 +218,14 @@ class TimeseriesKeys(models.Model):
             self.moduleinstancekey)
 
 
-class TimeseriesValuesAndFlags(composite.CompositePKModel):
+class Event(composite.CompositePKModel):
     serieskey = models.ForeignKey(TimeseriesKeys,
                                   primary_key=True,
                                   db_column='serieskey')
     datetime = models.DateTimeField(primary_key=True)
-    scalarvalue = models.FloatField()
-    flags = models.IntegerField()
+    value = models.FloatField(db_column='scalarvalue')
+    flag = models.IntegerField(db_column='flags')
+    comment = None  # not yet there
 
     class Meta:
         db_table = u'timeseriesvaluesandflags'

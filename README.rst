@@ -14,18 +14,38 @@ locations, parameters, timeseries and other (meta) information.
 We mainly want to display locations and their timeseries. Use the REST
 API or the Lizard interface to browse through the data.
 
+TODO: edit this paragraph( from all
+fews norm databases are synchronized into a single (django-) database
+for quick searching through multiple sources.)
 
 Usage
 -----
 
-Multiple fews norm databases can be configured in
-FewsNormSource. Locations, parameters and moduleinstances from all
-fews norm databases are synchronized into a single (django-) database
-for quick searching through multiple sources.
+bootstrap
+~~~~~~~~~
+
+First time you use lizard_fewsnorm, you will need to follow these instructions.
+
+* get hold of a fewsnorm data source.
+* edit your `settings.py` (or `testsettings.py`) and add an entry to the `DATABASES` dictionary.
+ * you might need explicitly set all fields, included `HOST` and `PORT`.
+ * use the correct `ENGINE`: django.contrib.gis.db.backends.postgis
+* syncdb
+* in the django site admin, add an item to 'fews norm sources', referring to the `DATABASES` entry.
+
+common administration
+~~~~~~~~~~~~~~~~~~~~~
+Your fewsnorm data source can contain multiple fews norm databases.  
+
+Each time a fews norm database is added to your fewsnorm data source you need synchronize things.
+
+You also need synchronizing when locations, parameters and/or moduleinstances are added.
+
+In practice, you need synchronize regularly.
 
 To sync your locations::
 
-    $> bin/django synchronize_geo_location_cache --source=fewsnorm --user=buildout
+    $> bin/django synchronize_geo_location_cache --user_name=<django user name>
 
 
 Adapter

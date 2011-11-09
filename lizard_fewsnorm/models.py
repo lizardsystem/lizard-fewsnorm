@@ -50,7 +50,7 @@ class ParameterGroups(models.Model):
         return u'%s' % self.id
 
 
-class Locations(models.Model):
+class Location(models.Model):
     locationkey = models.IntegerField(primary_key=True,
                                       db_column='locationkey')
     id = models.CharField(unique=True, max_length=64)
@@ -79,7 +79,7 @@ class Locations(models.Model):
         return u'%s' % self.id
 
 
-class Parameters(models.Model):
+class Parameter(models.Model):
     parameterkey = models.IntegerField(primary_key=True,
                                        db_column='parameterkey')
     groupkey = models.ForeignKey(ParameterGroups,
@@ -186,25 +186,25 @@ class AggregationPeriods(models.Model):
         return u'%s' % self.id
 
 
-class TimeseriesKeys(models.Model):
+class Series(models.Model):
     serieskey = models.IntegerField(primary_key=True,
                                     db_column='serieskey')
-    locationkey = models.ForeignKey(Locations,
-                                    db_column='locationkey')
-    parameterkey = models.ForeignKey(Parameters,
-                                     db_column='parameterkey')
-    qualifiersetkey = models.ForeignKey(QualifierSets,
+    location = models.ForeignKey(Location,
+                                 db_column='locationkey')
+    parameter = models.ForeignKey(Parameter,
+                                  db_column='parameterkey')
+    qualifierset = models.ForeignKey(QualifierSets,
                                         db_column='qualifiersetkey',
                                         blank=True, null=True)
-    moduleinstancekey = models.ForeignKey(ModuleInstances,
-                                          db_column='moduleinstancekey',
-                                          blank=True, null=True)
-    timestepkey = models.ForeignKey(Timesteps,
-                                    db_column='timestepkey',
-                                    blank=True, null=True)
-    aggregationperiodkey = models.ForeignKey(AggregationPeriods,
-                                             db_column='aggregationperiodkey',
-                                             blank=True, null=True)
+    moduleinstance = models.ForeignKey(ModuleInstances,
+                                       db_column='moduleinstancekey',
+                                       blank=True, null=True)
+    timestep = models.ForeignKey(Timesteps,
+                                 db_column='timestepkey',
+                                 blank=True, null=True)
+    aggregationperiody = models.ForeignKey(AggregationPeriods,
+                                           db_column='aggregationperiodkey',
+                                           blank=True, null=True)
 
     class Meta:
         db_table = u'timeserieskeys'
@@ -219,10 +219,10 @@ class TimeseriesKeys(models.Model):
 
 
 class Event(composite.CompositePKModel):
-    serieskey = models.ForeignKey(TimeseriesKeys,
-                                  primary_key=True,
-                                  db_column='serieskey')
-    datetime = models.DateTimeField(primary_key=True)
+    series = models.ForeignKey(Series,
+                               primary_key=True,
+                               db_column='serieskey')
+    timestamp = models.DateTimeField(primary_key=True, db_column='datetime')
     value = models.FloatField(db_column='scalarvalue')
     flag = models.IntegerField(db_column='flags')
     comment = None  # not yet there
@@ -240,7 +240,7 @@ class Event(composite.CompositePKModel):
 
 
 class TimeseriesComments(models.Model):
-    serieskey = models.ForeignKey(TimeseriesKeys,
+    serieskey = models.ForeignKey(Series,
                                   primary_key=True,
                                   db_column='serieskey',
                                   blank=True, null=True)
@@ -256,7 +256,7 @@ class TimeseriesComments(models.Model):
 
 
 class TimeseriesManualEditsHistory(models.Model):
-    serieskey = models.ForeignKey(TimeseriesKeys,
+    serieskey = models.ForeignKey(Series,
                                   primary_key=True,
                                   db_column='serieskey')
     editdatetime = models.DateTimeField(primary_key=True)
@@ -381,7 +381,7 @@ class FewsNormSource(models.Model):
         self.geolocationcache_set.all().delete()
 
     def source_locations(self):
-        return Locations.objects.using(self.database_name).all()
+        return Location.objects.using(self.database_name).all()
 
     def get_or_create_geoobjectgroup(self, user_name):
         user_obj = User.objects.get(username=user_name)
@@ -400,7 +400,7 @@ class FewsNormSource(models.Model):
         Fill ParameterCache
         """
         parameters = {}
-        for parameter in self.o(Parameters).all():
+        for parameter in self.o(Parameter).all():
             logger.debug('Get or create parameter cache %s', parameter.id)
             parameter_cache, _ = ParameterCache.objects.get_or_create(
                 ident=parameter.id)
@@ -463,7 +463,7 @@ class FewsNormSource(models.Model):
     def synchronize_time_series_cache(
         self, locations, parameters, modules, time_steps):
 
-        timeserieskeys = self.o(TimeseriesKeys).all()
+        timeserieskeys = self.o(Series).all()
         for single_timeserieskeys in timeserieskeys:
             logger.debug('processing timeseries: %s %s %s %s' % (
                     single_timeserieskeys.locationkey.id,

@@ -212,10 +212,10 @@ class Series(models.Model):
 
     def __unicode__(self):
         return u'%s %s %s %s' % (
-            self.locationkey,
-            self.parameterkey,
-            self.qualifiersetkey,
-            self.moduleinstancekey)
+            self.location,
+            self.parameter,
+            self.qualifierset,
+            self.moduleinstance)
 
 
 class Event(composite.CompositePKModel):
@@ -351,9 +351,9 @@ class TimeSeriesCache(models.Model):
     def get_timeserie(self, dt_start, dt_end):
         source = self.geolocationcache.fews_norm_source()
         timeserieskey = source.o(self.TimeseriesKey).filter(
-            locationkey__id=self.geolocationcache.ident,
-            parameterkey__id=self.parametercache.ident,
-            moduleinstancekey__id=self.modulecache.ident)
+            location__id=self.geolocationcache.ident,
+            parameter__id=self.parametercache.ident,
+            moduleinstance__id=self.modulecache.ident)
         if len(timeserieskey) == 0:
             return []
         else:
@@ -466,19 +466,19 @@ class FewsNormSource(models.Model):
         timeserieskeys = self.o(Series).all()
         for single_timeserieskeys in timeserieskeys:
             logger.debug('processing timeseries: %s %s %s %s' % (
-                    single_timeserieskeys.locationkey.id,
-                    single_timeserieskeys.parameterkey.id,
-                    single_timeserieskeys.moduleinstancekey.id,
-                    single_timeserieskeys.timestepkey.id))
+                    single_timeserieskeys.location.id,
+                    single_timeserieskeys.parameter.id,
+                    single_timeserieskeys.moduleinstance.id,
+                    single_timeserieskeys.timestep.id))
             time_series_cache = TimeSeriesCache(
                 geolocationcache=locations[
-                    single_timeserieskeys.locationkey.id],
+                    single_timeserieskeys.location.id],
                 parametercache=parameters[
-                    single_timeserieskeys.parameterkey.id],
+                    single_timeserieskeys.parameter.id],
                 modulecache=modules[
-                    single_timeserieskeys.moduleinstancekey.id],
+                    single_timeserieskeys.moduleinstance.id],
                 timestepcache=time_steps[
-                    single_timeserieskeys.timestepkey.id],
+                    single_timeserieskeys.timestep.id],
                 )
             time_series_cache.save()
 

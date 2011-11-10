@@ -16,10 +16,10 @@ urlpatterns = patterns(
     '',
     url(r'^$',
         lizard_fewsnorm.views.HomepageView.as_view(),
-        name=NAME_PREFIX+"homepage"),
+        name=NAME_PREFIX + "homepage"),
     url(r'^source/(?P<fews_norm_source_slug>.*)/$',
         lizard_fewsnorm.views.FewsNormSourceView.as_view(),
-        name=NAME_PREFIX+"source"),
+        name=NAME_PREFIX + "source"),
 
     (r'^api/', include('lizard_fewsnorm.api.urls')),
     )

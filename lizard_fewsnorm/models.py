@@ -363,10 +363,10 @@ class TimeSeriesCache(models.Model):
     #             datetime__lte=dt_end)
 
     # def get_latest_value(self, dt_start, dt_end):
-    #     timeserie = self.get_timeserie(dt_start, dt_end).order_by('-timestep')
+    #     timeserie = self.get_timeserie(dt_start, dt_end).order_by(
+    # '-timestep')
     #     if len(timeserie) > 0:
     #         return timeserie[0]
-
 
 
 class FewsNormSource(models.Model):

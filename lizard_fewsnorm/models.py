@@ -348,26 +348,6 @@ class TimeSeriesCache(models.Model):
             self.modulecache,
             self.timestepcache)
 
-<<<<<<< Updated upstream
-    def get_timeserie(self, dt_start, dt_end):
-        source = self.geolocationcache.fews_norm_source()
-        timeserieskey = source.o(self.TimeseriesKey).filter(
-            location__id=self.geolocationcache.ident,
-            parameter__id=self.parametercache.ident,
-            moduleinstance__id=self.modulecache.ident)
-        if len(timeserieskey) == 0:
-            return []
-        else:
-            serieskey = timeserieskey[0]
-            return serieskey.timeseriesvaluesandflags_set.objects.filter(
-                datetime__gte=dt_start,
-                datetime__lte=dt_end)
-
-    def get_latest_value(self, dt_start, dt_end):
-        timeserie = self.get_timeserie(dt_start, dt_end).order_by('-timestep')
-        if len(timeserie) > 0:
-            return timeserie[0]
-
     # def get_timeserie(self, dt_start, dt_end):
     #     source = self.geolocationcache.fews_norm_source()
     #     timeserieskey = source.o(self.TimeseriesKey).filter(

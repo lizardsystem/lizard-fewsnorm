@@ -12,12 +12,12 @@ from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
 from lizard_fewsnorm.models import GeoLocationCache
 from lizard_fewsnorm.models import ParameterCache
-from lizard_fewsnorm.models import Parameters
+from lizard_fewsnorm.models import Parameter
 from lizard_fewsnorm.models import ParameterGroups
-from lizard_fewsnorm.models import Locations
-from lizard_fewsnorm.models import TimeseriesKeys
+from lizard_fewsnorm.models import Location
+from lizard_fewsnorm.models import Series
 from lizard_fewsnorm.models import Timesteps
-from lizard_fewsnorm.models import TimeseriesValuesAndFlags
+from lizard_fewsnorm.models import Event
 from lizard_fewsnorm.models import TimeSeriesCache
 
 from lizard_map.models import ICON_ORIGINALS
@@ -61,7 +61,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         """
         Return parameter group unit
         """
-        parameter = fewsnorm_source.o(Parameters).get(
+        parameter = fewsnorm_source.o(Parameter).get(
             id=parameter_id)
         groupkey = parameter.groupkey.groupkey
         parameter_group = fewsnorm_source.o(ParameterGroups).get(
@@ -129,10 +129,10 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         return point_style
 
     def _serieskey(self, identifier, fewsnorm_source):
-        location = fewsnorm_source.o(Locations).get(id=identifier['ident'])
+        location = fewsnorm_source.o(Location).get(id=identifier['ident'])
 
         # try:
-        serieskey = fewsnorm_source.o(TimeseriesKeys).get(
+        serieskey = fewsnorm_source.o(Series).get(
             locationkey=location,
             parameterkey__id=self.parameter_id)
         # except dsfsdffd:
@@ -144,7 +144,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         Returns value of matched timestep in minutes
         otherwise returns 0.
         """
-        timestepkey = fewsnorm_source.o(TimeseriesKeys).get(
+        timestepkey = fewsnorm_source.o(Series).get(
             serieskey=self._serieskey(
                 identifier, fewsnorm_source).serieskey).timestepkey
         timestep = fewsnorm_source.o(Timesteps).get(
@@ -294,7 +294,7 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         serieskey = self._serieskey(identifier, fewsnorm_source)
 
         timeseriedata = fewsnorm_source.o(
-            TimeseriesValuesAndFlags).order_by(
+            Event).order_by(
             "datetime").filter(
                 serieskey=serieskey,
                 datetime__gte=start_date,

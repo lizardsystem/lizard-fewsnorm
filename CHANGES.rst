@@ -5,7 +5,9 @@ Changelog of lizard-fewsnorm
 0.2 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Pylint.
+
+- Renamed model names.
 
 
 0.1 (2011-11-07)

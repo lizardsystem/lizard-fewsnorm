@@ -238,6 +238,33 @@ class Event(composite.CompositePKModel):
             self.scalarvalue,
             self.flags)
 
+    @classmethod
+    def filter_latest_before_deadline(cls, series_set, deadline):
+        """filter events matching series_set
+
+        `series_set` is a QuerySet holding Series.
+
+        `deadline` is a time threshold: we only consider the events
+        before `deadline` and per Series we return the latest one.
+        """
+
+        ## get the concrete database from one of the locations in the series set.
+        # assume the serie_set is not empty!
+        first_serie = series_set[0]
+        location = GeoLocationCache.objects.get(ident=first_serie.location__id)
+        db_name = location.fews_norm_source.database_name
+
+        ## execute the query.
+        return cls.objects.using(db_name).raw("""\
+SELECT e.* FROM timeseriesvaluesandflags e
+  JOIN (SELECT serieskey, max(datetime) AS datetime
+        FROM timeseriesvaluesandflags
+        WHERE serieskey in %s
+          AND datetime < %s
+              GROUP BY serieskey) latest
+  ON e.serieskey = latest.serieskey
+  AND e.datetime = latest.datetime""" % (series_set, deadline))
+
 
 class TimeseriesComments(models.Model):
     serieskey = models.ForeignKey(Series,

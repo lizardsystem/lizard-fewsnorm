@@ -8,6 +8,7 @@ from lizard_fewsnorm.models import ParameterCache
 from lizard_fewsnorm.layers import AdapterFewsNorm
 from lizard_map.adapter import adapter_serialize
 
+
 class RootView(View):
     """
     Class based REST root view.
@@ -30,6 +31,7 @@ class RootView(View):
                 'name': 'parameter',
                 'url': reverse("lizard_fewsnorm_api_parameter")}
             }
+
 
 class IdentifierView(View):
     """
@@ -77,7 +79,7 @@ class IdentifierView(View):
                     'identifier': serialized_identifier,
                     'img_url': img_url_id,
                     'values_csv_url': values_csv_url_id,
-                    'values_html_url': values_html_url_id,})
+                    'values_html_url': values_html_url_id, })
         return result
 
 

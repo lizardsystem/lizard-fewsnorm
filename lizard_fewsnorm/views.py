@@ -4,7 +4,7 @@ from lizard_map.views import AppView
 
 from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import ModuleInstances
-from lizard_fewsnorm.models import Parameters
+from lizard_fewsnorm.models import Parameter
 
 
 class HomepageView(AppView):
@@ -18,7 +18,7 @@ class FewsNormSourceView(AppView):
     template_name = 'lizard_fewsnorm/fews_norm_source.html'
 
     def parameters(self):
-        return self.fews_norm_source.o(Parameters).all()
+        return self.fews_norm_source.o(Parameter).all()
 
     def modules(self):
         return self.fews_norm_source.o(ModuleInstances).all()

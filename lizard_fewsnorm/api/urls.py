@@ -11,13 +11,10 @@ from lizard_fewsnorm.api.resources import LocationResource
 from lizard_fewsnorm.api.resources import ParameterResource
 from lizard_fewsnorm.api.resources import FewsNormSourceResource
 
-from lizard_fewsnorm.api.views import AdapterChoiceView
-from lizard_fewsnorm.api.views import AdapterView
 from lizard_fewsnorm.api.views import IdentifierView
 from lizard_fewsnorm.api.views import LocationView
 from lizard_fewsnorm.api.views import ParameterView
 from lizard_fewsnorm.api.views import RootView
-from lizard_fewsnorm.layers import AdapterFewsNorm
 
 
 admin.autodiscover()

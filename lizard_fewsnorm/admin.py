@@ -22,6 +22,7 @@ from lizard_fewsnorm.models import TimeSeriesCache
 # from lizard_fewsnorm.models import TimeseriesComments
 # from lizard_fewsnorm.models import TimeseriesManualEditsHistory
 
+
 class FewsNormSourceAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name", )}
 

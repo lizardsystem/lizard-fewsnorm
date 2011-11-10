@@ -35,7 +35,7 @@ First time you use lizard_fewsnorm, you will need to follow these instructions.
 
 common administration
 ~~~~~~~~~~~~~~~~~~~~~
-Your fewsnorm data source can contain multiple fews norm databases.  
+Your fewsnorm data source can contain multiple fews norm databases.
 
 Each time a fews norm database is added to your fewsnorm data source you need synchronize things.
 
@@ -46,6 +46,16 @@ In practice, you need synchronize regularly.
 To sync your locations::
 
     $> bin/django synchronize_geo_location_cache --user_name=<django user name>
+
+
+dumpdata
+~~~~~~~~
+
+We only want to dump data from the default database. This is the way
+to do it::
+
+    $> bin/django dumpdata lizard_fewsnorm.FewsNormSource lizard_fewsnorm.ParameterCache lizard_fewsnorm.ModuleCache lizard_fewsnorm.TimeStepCache lizard_fewsnorm.TimeSeriesCache lizard_fewsnorm.GeoLocationCache lizard_geo --indent=2
+
 
 
 Adapter

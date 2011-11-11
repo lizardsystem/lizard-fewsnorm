@@ -217,6 +217,26 @@ class Series(models.Model):
             self.qualifierset,
             self.moduleinstance)
 
+    @classmethod
+    def from_lppairs(cls, lppairs):
+        """select series matching zipped location parameter iterable.
+        """
+
+        location = GeoLocationCache.objects.get(ident=lppairs[0][0])
+        db_name = location.fews_norm_source.database_name
+
+        locations = Location.objects.using(db_name).filter(id__in=[l for (l, p) in lppairs])
+        parameters = Parameter.objects.using(db_name).filter(id__in=[p for (l, p) in lppairs])
+
+        l_id_to_pk = dict((l.id, l.pk) for l in locations)
+        p_id_to_pk = dict((p.id, p.pk) for p in parameters)
+
+        keys = tuple((l_id_to_pk[l], p_id_to_pk[p]) for (l, p) in lppairs)
+
+        return cls.objects.raw("\
+SELECT * FROM \"timeserieskeys\" \
+WHERE (locationkey, parameterkey) IN %s" % (keys,)).using(db_name)
+
 
 class Event(composite.CompositePKModel):
     series = models.ForeignKey(Series,
@@ -251,19 +271,22 @@ class Event(composite.CompositePKModel):
         ## get the concrete database from one of the locations in the series set.
         # assume the serie_set is not empty!
         first_serie = series_set[0]
-        location = GeoLocationCache.objects.get(ident=first_serie.location__id)
+        location = GeoLocationCache.objects.get(ident=first_serie.location.id)
         db_name = location.fews_norm_source.database_name
 
+        series_set__pk = tuple(s.pk for s in series_set)
+        deadline__iso = deadline.isoformat()
+
         ## execute the query.
-        return cls.objects.using(db_name).raw("""\
+        return cls.objects.raw("""\
 SELECT e.* FROM timeseriesvaluesandflags e
   JOIN (SELECT serieskey, max(datetime) AS datetime
         FROM timeseriesvaluesandflags
         WHERE serieskey in %s
-          AND datetime < %s
+          AND datetime < '%s'
               GROUP BY serieskey) latest
   ON e.serieskey = latest.serieskey
-  AND e.datetime = latest.datetime""" % (series_set, deadline))
+  AND e.datetime = latest.datetime""" % (series_set__pk, deadline__iso)).using(db_name)
 
 
 class TimeseriesComments(models.Model):

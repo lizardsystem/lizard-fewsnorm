@@ -222,7 +222,16 @@ class Series(models.Model):
         """select series matching zipped location parameter iterable.
         """
 
-        location = GeoLocationCache.objects.get(ident=lppairs[0][0])
+        location = None
+        for (l, p) in lppairs:
+            try:
+                location = GeoLocationCache.objects.get(ident=l)
+                break
+            except:
+                pass
+        if location is None:
+            return None
+
         db_name = location.fews_norm_source.database_name
 
         locations = Location.objects.using(db_name).filter(id__in=[l for (l, p) in lppairs])

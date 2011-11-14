@@ -5,6 +5,8 @@ Changelog of lizard-fewsnorm
 0.2 (unreleased)
 ----------------
 
+- Fixed adapter.layer, some models were changed.
+
 - Pylint.
 
 - Renamed model names.

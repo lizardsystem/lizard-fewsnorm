@@ -167,12 +167,12 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
              lizard_fewsnorm_fewsnormsource as source,
              lizard_fewsnorm_parametercache as par,
              lizard_fewsnorm_modulecache as mod,
-             lizard_fewsnorm_geolocationcache_parameter as geoloc_par where
+             lizard_fewsnorm_timeseriescache as ts_cache where
                loc.geoobject_ptr_id = geoobject.id and
                loc.fews_norm_source_id = source.id and
                source.slug = '%s' and
-               loc.geoobject_ptr_id = geoloc_par.geolocationcache_id and
-               geoloc_par.parametercache_id = par.id and
+               loc.geoobject_ptr_id = ts_cache.geolocationcache_id and
+               ts_cache.parametercache_id = par.id and
                par.ident = '%s'
            ) data""" % (self.fews_norm_source_slug, self.parameter_id))
         # query = (

@@ -14,9 +14,10 @@ locations, parameters, timeseries and other (meta) information.
 We mainly want to display locations and their timeseries. Use the REST
 API or the Lizard interface to browse through the data.
 
-TODO: edit this paragraph( from all
-fews norm databases are synchronized into a single (django-) database
-for quick searching through multiple sources.)
+Multiple FEWS Norm databases can be defined in FewsNormSource. We want
+to search through locations/parameters/... from all those databases in
+a fast way. To accomplish this, locations, parameters, modules
+and timeseries (without data) are synchronized to a single database.
 
 Usage
 -----
@@ -96,3 +97,25 @@ been modified, for example directly by you or through an update of your working
 directory.
 
 You need PostGIS in order to use the adapter.
+
+
+How to use timeseries in your own app
+-------------------------------------
+
+1) Find out the database_name. All possible entries are stored in
+FewsNormSource.
+
+2) Find out the location_id and parameter_id. Examples: location_id =
+'ALM_237/1_Pomp-2', parameter_id = 'du.meting.omgezet2'
+
+3) Filter the Series object using this information::
+
+    >>> filtered_series = Series.objects.using(db_name).filter(location__id=l_id, parameter_id=p_id)
+
+4) Use the TimeSeries object to read the data::
+
+    >>> tsd = timeseries.TimeSeries.as_dict(filtered_series)
+
+Read the events. The result is a dictionary with keys l_id, p_id::
+
+    >>> tsd[l_id, p_id].events.items()

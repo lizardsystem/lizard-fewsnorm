@@ -234,8 +234,10 @@ class Series(models.Model):
 
         db_name = location.fews_norm_source.database_name
 
-        locations = Location.objects.using(db_name).filter(id__in=[l for (l, p) in lppairs])
-        parameters = Parameter.objects.using(db_name).filter(id__in=[p for (l, p) in lppairs])
+        locations = Location.objects.using(db_name).filter(
+            id__in=[l for (l, p) in lppairs])
+        parameters = Parameter.objects.using(db_name).filter(
+            id__in=[p for (l, p) in lppairs])
 
         l_id_to_pk = dict((l.id, l.pk) for l in locations)
         p_id_to_pk = dict((p.id, p.pk) for p in parameters)
@@ -277,7 +279,9 @@ class Event(composite.CompositePKModel):
         before `deadline` and per Series we return the latest one.
         """
 
-        ## get the concrete database from one of the locations in the series set.
+        ## get the concrete database from one of the locations in the
+        ## series set.
+
         # assume the serie_set is not empty!
         first_serie = series_set[0]
         location = GeoLocationCache.objects.get(ident=first_serie.location.id)
@@ -295,7 +299,8 @@ SELECT e.* FROM timeseriesvaluesandflags e
           AND datetime < '%s'
               GROUP BY serieskey) latest
   ON e.serieskey = latest.serieskey
-  AND e.datetime = latest.datetime""" % (series_set__pk, deadline__iso)).using(db_name)
+  AND e.datetime = latest.datetime""" % (
+                series_set__pk, deadline__iso)).using(db_name)
 
 
 class TimeseriesComments(models.Model):

@@ -5,6 +5,12 @@ Changelog of lizard-fewsnorm
 0.2 (unreleased)
 ----------------
 
+- Added module_id to identifier in adapter.
+
+- Fixed graphs after renaming.
+
+- Renamed Series.aggregationperiody to aggregationperiod.
+
 - Fixed adapter.layer, some models were changed.
 
 - Pylint.

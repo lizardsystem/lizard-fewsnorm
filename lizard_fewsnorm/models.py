@@ -202,9 +202,9 @@ class Series(models.Model):
     timestep = models.ForeignKey(Timesteps,
                                  db_column='timestepkey',
                                  blank=True, null=True)
-    aggregationperiody = models.ForeignKey(AggregationPeriods,
-                                           db_column='aggregationperiodkey',
-                                           blank=True, null=True)
+    aggregationperiod = models.ForeignKey(AggregationPeriods,
+                                          db_column='aggregationperiodkey',
+                                          blank=True, null=True)
 
     class Meta:
         db_table = u'timeserieskeys'
@@ -250,6 +250,11 @@ WHERE (locationkey, parameterkey) IN %s" % (keys,)).using(db_name)
 
 
 class Event(composite.CompositePKModel):
+    """
+    A single event.
+
+    Use the model Series to find out more.
+    """
     series = models.ForeignKey(Series,
                                primary_key=True,
                                db_column='serieskey')

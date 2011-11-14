@@ -3,8 +3,9 @@
 from lizard_map.views import AppView
 
 from lizard_fewsnorm.models import FewsNormSource
-from lizard_fewsnorm.models import ModuleInstances
-from lizard_fewsnorm.models import Parameter
+# from lizard_fewsnorm.models import ModuleInstances
+# from lizard_fewsnorm.models import Parameter
+from lizard_fewsnorm.models import TimeSeriesCache
 
 
 class HomepageView(AppView):
@@ -16,15 +17,20 @@ class HomepageView(AppView):
 
 class FewsNormSourceView(AppView):
     template_name = 'lizard_fewsnorm/fews_norm_source.html'
+    fews_norm_source = None
 
-    def parameters(self):
-        return self.fews_norm_source.o(Parameter).all()
+    def source_parameter_modules(self):
+        """
+        Return unique parameter - module combinations that are in
+        TimeSeriesCache.
+        """
 
-    def modules(self):
-        return self.fews_norm_source.o(ModuleInstances).all()
-
-    def fews_norm_source(self):
-        return self.fews_norm_source
+        spm = TimeSeriesCache.objects.filter(
+            geolocationcache__fews_norm_source=self.fews_norm_source).values(
+            'geolocationcache__fews_norm_source__name',
+            'geolocationcache__fews_norm_source__slug',
+            'parametercache__ident', 'modulecache__ident').distinct()
+        return spm
 
     def get(self, request, *args, **kwargs):
         self.fews_norm_source = FewsNormSource.objects.get(

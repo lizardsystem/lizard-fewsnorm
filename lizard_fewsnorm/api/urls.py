@@ -15,6 +15,7 @@ from lizard_fewsnorm.api.views import IdentifierView
 from lizard_fewsnorm.api.views import LocationView
 from lizard_fewsnorm.api.views import ParameterView
 from lizard_fewsnorm.api.views import RootView
+from lizard_fewsnorm.api.views import TimeserieSelectionView
 
 
 admin.autodiscover()
@@ -47,4 +48,7 @@ urlpatterns = patterns(
     url(r'^parameter/(?P<ident>.*)/$',
         InstanceModelView.as_view(resource=ParameterResource),
         name=NAME_PREFIX + 'parameter_detail'),
+    url(r'^timeserieselection/$',
+        TimeserieSelectionView.as_view(),
+        name=NAME_PREFIX + 'timeserie_selection'),
     )

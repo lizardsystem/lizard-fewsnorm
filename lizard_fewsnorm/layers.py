@@ -11,10 +11,8 @@ from django.contrib.gis.measure import D
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
 from lizard_fewsnorm.models import GeoLocationCache
-from lizard_fewsnorm.models import ParameterCache
 from lizard_fewsnorm.models import Parameter
 from lizard_fewsnorm.models import ParameterGroups
-from lizard_fewsnorm.models import Location
 from lizard_fewsnorm.models import Series
 from lizard_fewsnorm.models import Timesteps
 from lizard_fewsnorm.models import Event

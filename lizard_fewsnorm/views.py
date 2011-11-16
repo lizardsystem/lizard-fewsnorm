@@ -3,8 +3,6 @@
 from lizard_map.views import AppView
 
 from lizard_fewsnorm.models import FewsNormSource
-# from lizard_fewsnorm.models import ModuleInstances
-# from lizard_fewsnorm.models import Parameter
 from lizard_fewsnorm.models import TimeSeriesCache
 
 

@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.2 (unreleased)
+0.2 (2011-11-16)
 ----------------
 
 - Renamed management command. Changed options.

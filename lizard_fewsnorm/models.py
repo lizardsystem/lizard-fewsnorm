@@ -94,6 +94,7 @@ class Parameter(models.Model):
 
     class Meta:
         db_table = u'parameters'
+        #db_schema = 'nskv00_opdb'
         managed = False
 
     def __unicode__(self):
@@ -161,7 +162,8 @@ class Timesteps(models.Model):
     timestepkey = models.IntegerField(primary_key=True,
                                       db_column='timestepkey')
     id = models.CharField(unique=True, max_length=64)
-    description = models.CharField(max_length=64)
+    #description = models.CharField(max_length=64)  # on testdatabase
+    #label = models.CharField(max_length=64)  # on fewsnorm-dev
 
     class Meta:
         db_table = u'timesteps'
@@ -268,11 +270,11 @@ class Event(composite.CompositePKModel):
         managed = False
 
     def __unicode__(self):
-        return u'%s %s %s %s' % (
-            self.id,
-            self.datetime,
-            self.scalarvalue,
-            self.flags)
+        return u'%s %s value=%s %s' % (
+            self.series,
+            self.timestamp,
+            self.value,
+            self.flag)
 
     @classmethod
     def filter_latest_before_deadline(cls, series_set, deadline):
@@ -349,6 +351,9 @@ class TimeseriesManualEditsHistory(models.Model):
 class ParameterCache(models.Model):
     ident = models.CharField(max_length=64)
 
+    class Meta:
+        ordering = ('ident', )
+
     def __unicode__(self):
         return '%s' % self.ident
 
@@ -360,6 +365,9 @@ class ParameterCache(models.Model):
 class ModuleCache(models.Model):
     ident = models.CharField(max_length=64)
 
+    class Meta:
+        ordering = ('ident', )
+
     def __unicode__(self):
         return u'%s' % self.ident
 
@@ -369,6 +377,9 @@ class ModuleCache(models.Model):
 
 class TimeStepCache(models.Model):
     ident = models.CharField(max_length=64)
+
+    class Meta:
+        ordering = ('ident', )
 
     def __unicode__(self):
         return u'%s' % self.ident
@@ -391,8 +402,11 @@ class GeoLocationCache(GeoObject):
         TimeStepCache, null=True, blank=True, through='TimeSeriesCache')
     objects = models.GeoManager()
 
+    class Meta:
+        ordering = ('ident', 'name')
+
     def __unicode__(self):
-        return '%s %s ' % (self.fews_norm_source, self.ident)
+        return '%s (%s)' % (self.ident, self.fews_norm_source)
 
     def api_url(self):
         return reverse('lizard_fewsnorm_api_location_detail',
@@ -553,7 +567,7 @@ class FewsNormSource(models.Model):
             time_series_cache.save()
 
     def __unicode__(self):
-        return '%s (%s)' % (self.name, self.database_name)
+        return '%s' % (self.name)
 
     def o(self, model_object):
         """

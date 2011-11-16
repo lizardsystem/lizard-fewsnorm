@@ -5,6 +5,8 @@ Changelog of lizard-fewsnorm
 0.2 (unreleased)
 ----------------
 
+- Added ordering to some models.
+
 - Added module_id to identifier in adapter.
 
 - Fixed graphs after renaming.

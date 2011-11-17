@@ -406,7 +406,12 @@ class GeoLocationCache(GeoObject):
         ordering = ('ident', 'name')
 
     def __unicode__(self):
-        return '%s (%s)' % (self.ident, self.fews_norm_source)
+        try:
+            return '%s (%s)' % (self.ident, self.fews_norm_source)
+        except:
+            # You can use GeoLocationCache as a memory object without
+            # defining fews_norm_source.
+            return '%s' % self.ident
 
     def api_url(self):
         return reverse('lizard_fewsnorm_api_location_detail',

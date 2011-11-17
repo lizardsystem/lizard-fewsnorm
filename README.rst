@@ -46,7 +46,7 @@ In practice, you need synchronize regularly.
 
 To sync your locations::
 
-    $> bin/django synchronize_geo_location_cache --user_name=<django user name>
+    $> bin/django sync_fewsnorm --user_name=<django user name>
 
 
 dumpdata
@@ -105,17 +105,30 @@ How to use timeseries in your own app
 1) Find out the database_name. All possible entries are stored in
 FewsNormSource.
 
-2) Find out the location_id and parameter_id. Examples: location_id =
-'ALM_237/1_Pomp-2', parameter_id = 'du.meting.omgezet2'
+2) Find out the location_id, parameter_id and optionally module_id. If
+module_id is omitted, lines will be drawn from all modules. Examples:
+location_id = 'ALM_237/1_Pomp-2', parameter_id = 'du.meting.omgezet2',
+module_id = 'Productie'
 
 3) Filter the Series object using this information::
 
-    >>> filtered_series = Series.objects.using(db_name).filter(location__id=l_id, parameter_id=p_id)
+    >>> filtered_series = Series.objects.using(db_name).filter(location__id=l_id, parameter__id=p_id)
 
 4) Use the TimeSeries object to read the data::
 
-    >>> tsd = timeseries.TimeSeries.as_dict(filtered_series)
+    >>> from timeseries import timeseries
+    >>> start = datetime.datetime.now() - datetime.timedelta(days=10)
+    >>> end = datetime.datetime.now()
+    >>> tsd = timeseries.TimeSeries.as_dict(filtered_series, start, end)
 
 Read the events. The result is a dictionary with keys l_id, p_id::
 
     >>> tsd[l_id, p_id].events.items()
+
+
+The event items area:
+- key is timestamp
+- value is 3-tuple with (value, flag, comment)
+
+Note: if you loop through the event items, they do not appear on
+timestamp order.

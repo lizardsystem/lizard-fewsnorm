@@ -2,8 +2,24 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.2 (unreleased)
+0.3 (unreleased)
 ----------------
+
+- Nothing changed yet.
+
+
+0.2 (2011-11-16)
+----------------
+
+- Renamed management command. Changed options.
+
+- Added ordering to some models.
+
+- Added module_id to identifier in adapter.
+
+- Fixed graphs after renaming.
+
+- Renamed Series.aggregationperiody to aggregationperiod.
 
 - Fixed adapter.layer, some models were changed.
 

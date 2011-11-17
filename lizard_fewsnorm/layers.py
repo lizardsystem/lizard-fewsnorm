@@ -11,10 +11,8 @@ from django.contrib.gis.measure import D
 from lizard_map import coordinates
 from lizard_map.workspace import WorkspaceItemAdapter
 from lizard_fewsnorm.models import GeoLocationCache
-from lizard_fewsnorm.models import ParameterCache
 from lizard_fewsnorm.models import Parameter
 from lizard_fewsnorm.models import ParameterGroups
-from lizard_fewsnorm.models import Location
 from lizard_fewsnorm.models import Series
 from lizard_fewsnorm.models import Timesteps
 from lizard_fewsnorm.models import Event
@@ -128,26 +126,22 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
 
         return point_style
 
-    def _serieskey(self, identifier, fewsnorm_source):
-        location = fewsnorm_source.o(Location).get(id=identifier['ident'])
-
-        # try:
-        serieskey = fewsnorm_source.o(Series).get(
-            locationkey=location,
-            parameterkey__id=self.parameter_id)
-        # except dsfsdffd:
-        #     serieskey = None
-        return serieskey
+    def _series(self, identifier, fewsnorm_source):
+        series = Series.objects.using(fewsnorm_source.database_name).get(
+            location__id=identifier['ident'],
+            parameter__id=self.parameter_id,
+            moduleinstance__id=self.module_id)
+        return series
 
     def _timestep(self, identifier, fewsnorm_source):
         """
-        Returns value of matched timestep in minutes
-        otherwise returns 0.
+        Return value of matched timestep in minutes
+        otherwise return None.
         """
-        timestepkey = fewsnorm_source.o(Series).get(
-            serieskey=self._serieskey(
+        timestepkey = Series.objects.using(fewsnorm_source.database_name).get(
+            series=self._series(
                 identifier, fewsnorm_source).serieskey).timestepkey
-        timestep = fewsnorm_source.o(Timesteps).get(
+        timestep = Timesteps.objects.using(fewsnorm_source.database_name).get(
             timestepkey=timestepkey.timestepkey)
         return TIME_STEPS.get(timestep.id, None)
 
@@ -173,8 +167,11 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
                source.slug = '%s' and
                loc.geoobject_ptr_id = ts_cache.geolocationcache_id and
                ts_cache.parametercache_id = par.id and
-               par.ident = '%s'
-           ) data""" % (self.fews_norm_source_slug, self.parameter_id))
+               par.ident = '%s' and
+               ts_cache.modulecache_id = mod.id and
+               mod.ident = '%s'
+           ) data""" % (self.fews_norm_source_slug, self.parameter_id,
+                        self.module_id))
         # query = (
         #     """(select geometry from
         #          lizard_geo_geoobject as geoobject,
@@ -219,10 +216,10 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         #x, y = coordinates.google_to_wgs84(google_x, google_y)
         #pnt = GEOSGeometry(Point(x, y), srid=4326)
         pnt = GEOSGeometry(Point(google_x, google_y), srid=900913)
-        parameter = ParameterCache.objects.get(ident=self.parameter_id)
         locations = GeoLocationCache.objects.filter(
             geometry__distance_lte=(pnt, D(m=radius * 0.3)),
-            parameter=parameter)
+            parameter__ident=self.parameter_id,
+            module__ident=self.module_id)
 
         result = []
         for location in locations:
@@ -291,19 +288,19 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
             fewsnorm_source = AdapterFewsNorm._fewsnorm_source(
                 identifier['ident'])
 
-        serieskey = self._serieskey(identifier, fewsnorm_source)
+        series = self._series(identifier, fewsnorm_source)
 
-        timeseriedata = fewsnorm_source.o(
-            Event).order_by(
-            "datetime").filter(
-                serieskey=serieskey,
-                datetime__gte=start_date,
-                datetime__lte=end_date)
+        events = Event.objects.using(
+            fewsnorm_source.database_name).order_by("timestamp").filter(
+            series=series,
+            timestamp__gte=start_date,
+            timestamp__lte=end_date)
         result = []
-        for timeserie_row in timeseriedata:
+        for event in events:
             result.append({
-                    'value': timeserie_row.scalarvalue,
-                    'datetime': timeserie_row.datetime,
+                    'value': event.value,
+                    'datetime': event.timestamp,
+                    'flag': event.flag,
                     })
         return result
 
@@ -351,15 +348,15 @@ class AdapterFewsNorm(WorkspaceItemAdapter):
         #legend = None
         for identifier in identifiers:
             fewsnorm_source = self._fewsnorm_source(identifier['ident'])
-            timeseriesdata = self.values(
+            events = self.values(
                 identifier, start_date, end_date,
                 fewsnorm_source=fewsnorm_source)
 
             dates = []
             values = []
-            for series_row in timeseriesdata:
-                dates.append(series_row['datetime'])
-                values.append(series_row['value'])
+            for event in events:
+                dates.append(event['datetime'])
+                values.append(event['value'])
             if layout_extra.get('type') == "line":
                 graph.axes.plot(dates,
                                 values,

@@ -7,12 +7,17 @@
 <div class="sidebarbox sidebarbox-stretched automatic-tree filetree pane">
   <h2>fewsnorm</h2>
   <ul>
-    {% for parameter in view.parameters %}
+    {% for spm in view.source_parameter_modules %}
+    {% with spm.geolocationcache__fews_norm_source__name as source_name %}
+    {% with spm.geolocationcache__fews_norm_source__slug as source_slug %}
+    {% with spm.parametercache__ident as parameter_id %}
+    {% with spm.modulecache__ident as module_id %}
     <li class="workspace-acceptable file"
-        data-name="{{ view.fews_norm_source.name }} - {{ parameter.id }}"
+        data-name="{{ source_name }} - {{ parameter_id }} - {{ module_id }}"
         data-adapter-class="adapter_fewsnorm"
-        data-adapter-layer-json='{"fews_norm_source_slug":"{{ view.fews_norm_source.slug }}", "parameter_id":"{{ parameter.id }}", "module_id": ""}'
-        >Parameter {{ parameter.id }}</li>
+        data-adapter-layer-json='{"fews_norm_source_slug":"{{ source_slug }}", "parameter_id":"{{ parameter_id }}", "module_id": "{{ module_id }}"}'
+        >{{ parameter_id }} - {{ module_id }} ({{ source_name }})</li>
+    {% endwith %}{% endwith %}{% endwith %}{% endwith %}
     {% endfor %}
   </ul>
 </div>

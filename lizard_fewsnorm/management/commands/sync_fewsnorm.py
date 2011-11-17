@@ -21,7 +21,7 @@ class Command(BaseCommand):
             "--source=fewsnorm1 --user_name=buildout")
 
     option_list = BaseCommand.option_list + (
-        make_option('--source',
+        make_option('--db_name',
                     help='name of fewsnorm database, optionally',
                     type='str',
                     default=None),
@@ -40,10 +40,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         user_name = options["user_name"]
         if user_name is None:
-            logger.error("Expects a user name, use --help for usage.")
+            logger.error("Provide a user_name, use --help for usage.")
             return
 
-        sources = self.get_sources(options["source"])
+        sources = self.get_sources(options["db_name"])
+        if not sources:
+            logger.info("No databases selected. Check your db_name, "
+                        "if provided.")
         for source in sources:
             logger.debug(
                 'Creating ParameterCache for fewsnorm %s...', source.name)

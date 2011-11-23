@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse
 from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
 from lizard_fewsnorm.models import ParameterCache
+from lizard_fewsnorm.models import TimeSeriesCache
 
 from lizard_fewsnorm.layers import AdapterFewsNorm
 from lizard_map.adapter import adapter_serialize
@@ -91,6 +92,27 @@ class LocationView(View):
         return [{'ident': location.ident,
                  'url': location.api_url()}
                 for location in GeoLocationCache.objects.all()]
+
+
+class TimeserieSelectionView(View):
+    """
+    for timeserie selection
+    """
+    def get(self, request, *args, **kwargs):
+        query = request.GET.get('query', '')
+        parts = query.split(',')
+
+        timeseries = TimeSeriesCache.objects.filter(geolocationcache__ident__istartswith=parts[0])
+
+        if len(parts) > 1:
+            timeseries  = timeseries.filter(parametercache__ident__istartswith=parts[1])
+
+        return [{'id': timeserie.id,
+                 'name': '%s,%s'%(timeserie.geolocationcache.ident, timeserie.parametercache.ident),
+                 'location': timeserie.geolocationcache.ident,
+                 'parameter': timeserie.parametercache.ident}
+                for timeserie in timeseries.order_by('geolocationcache__ident', 'parametercache__ident').distinct()[0:25]]
+
 
 
 class ParameterView(View):

@@ -64,6 +64,7 @@ class FewsNormSourceResource(ModelResource):
 
 class TimeSeriesResource(ModelResource):
     """
+    Time Series with events.
     """
     model = TimeSeriesCache
     fields = ('location', 'module', 'parameter', 'timestep', 'events', )

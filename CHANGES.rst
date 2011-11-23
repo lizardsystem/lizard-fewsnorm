@@ -5,7 +5,7 @@ Changelog of lizard-fewsnorm
 0.3 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Added timeseries api view (displays timeseries as json events).
 
 
 0.2 (2011-11-16)

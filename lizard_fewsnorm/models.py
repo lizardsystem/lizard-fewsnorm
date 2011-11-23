@@ -436,6 +436,10 @@ class TimeSeriesCache(models.Model):
             self.modulecache,
             self.timestepcache)
 
+    def api_url(self):
+        return reverse('lizard_fewsnorm_api_timeseries_detail',
+                       kwargs={'id': self.id})
+
     # def get_timeserie(self, dt_start, dt_end):
     #     source = self.geolocationcache.fews_norm_source()
     #     timeserieskey = source.o(self.TimeseriesKey).filter(
@@ -574,21 +578,21 @@ class FewsNormSource(models.Model):
     def __unicode__(self):
         return '%s' % (self.name)
 
-    def o(self, model_object):
-        """
-        Return Model using database_name.
+    # def o(self, model_object):
+    #     """
+    #     Return Model using database_name.
 
-        Using the short name o because the function is supposed to be
-        a shortcut.
+    #     Using the short name o because the function is supposed to be
+    #     a shortcut.
 
-        Example usage:
+    #     Example usage:
 
-        >>> source = FewsNormSource(name='test', database_name='default')
-        >>> source.o(FewsNormSource).all()
-        []
-        """
+    #     >>> source = FewsNormSource(name='test', database_name='default')
+    #     >>> source.o(FewsNormSource).all()
+    #     []
+    #     """
 
-        return model_object.objects.using(self.database_name)
+    #     return model_object.objects.using(self.database_name)
 
     def api_url(self):
         return reverse(

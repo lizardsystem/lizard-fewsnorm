@@ -5,7 +5,10 @@ Changelog of lizard-fewsnorm
 0.3 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Changed  __unicode__ string of TimeSeriesCache in case of
+  lizard_wbconfiguration.
+
+- Extended return string of get() in TimeserieSelectionView.
 
 
 0.2 (2011-11-16)

@@ -430,11 +430,14 @@ class TimeSeriesCache(models.Model):
     timestepcache = models.ForeignKey(TimeStepCache)
 
     def __unicode__(self):
-        return 'loc %s, par %s, mod %s, tstep %s' % (
-            self.geolocationcache,
-            self.parametercache,
-            self.modulecache,
-            self.timestepcache)
+        """
+        Used in lizard_wbconfiguration to display and find the
+        timeseries. Do not change the return string.
+        """
+        return '%s,%s,%s' % (
+            self.geolocationcache.ident,
+            self.parametercache.ident,
+            self.id)
 
     # def get_timeserie(self, dt_start, dt_end):
     #     source = self.geolocationcache.fews_norm_source()

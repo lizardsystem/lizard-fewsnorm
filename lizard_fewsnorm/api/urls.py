@@ -9,6 +9,7 @@ from djangorestframework.views import ListOrCreateModelView
 
 from lizard_fewsnorm.api.resources import LocationResource
 from lizard_fewsnorm.api.resources import ParameterResource
+from lizard_fewsnorm.api.resources import TimeSeriesResource
 from lizard_fewsnorm.api.resources import FewsNormSourceResource
 
 from lizard_fewsnorm.api.views import IdentifierView
@@ -48,6 +49,9 @@ urlpatterns = patterns(
     url(r'^parameter/(?P<ident>.*)/$',
         InstanceModelView.as_view(resource=ParameterResource),
         name=NAME_PREFIX + 'parameter_detail'),
+    url(r'^timeseries/(?P<id>.*)/$',
+        InstanceModelView.as_view(resource=TimeSeriesResource),
+        name=NAME_PREFIX + 'timeseries_detail'),
     url(r'^timeserieselection/$',
         TimeserieSelectionView.as_view(),
         name=NAME_PREFIX + 'timeserie_selection'),

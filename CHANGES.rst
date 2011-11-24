@@ -5,10 +5,13 @@ Changelog of lizard-fewsnorm
 0.3 (unreleased)
 ----------------
 
+
 - Changed  __unicode__ string of TimeSeriesCache in case of
   lizard_wbconfiguration.
 
 - Extended return string of get() in TimeserieSelectionView.
+
+- Added timeseries api view (displays timeseries as json events).
 
 
 0.2 (2011-11-16)

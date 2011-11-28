@@ -25,6 +25,6 @@ class AdapterTest(TestCase):
     #     locations = self.source_db.source_locations()
     #     self.assertNotEqual(len(locations), 0)
 
-    def get_or_create_geoobjectgroup(self):
+    def test_get_or_create_geoobjectgroup(self):
         group = self.source_db.get_or_create_geoobjectgroup(self.user.username)
         self.assertEquals(isinstance(group, GeoObjectGroup), True)

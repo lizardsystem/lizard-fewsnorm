@@ -492,7 +492,7 @@ class FewsNormSource(models.Model):
         Fill ParameterCache
         """
         parameters = {}
-        for parameter in self.o(Parameter).all():
+        for parameter in Parameter.objects.using(self.database_name).all():
             logger.debug('Get or create parameter cache %s', parameter.id)
             parameter_cache, _ = ParameterCache.objects.get_or_create(
                 ident=parameter.id)
@@ -505,7 +505,7 @@ class FewsNormSource(models.Model):
         Fill ModuleCache.
         """
         modules = {}
-        for module in self.o(ModuleInstances).all():
+        for module in ModuleInstances.objects.using(self.database_name).all():
             module_cache, _ = ModuleCache.objects.get_or_create(
                 ident=module.id)
             modules[module_cache.ident] = module_cache
@@ -517,7 +517,7 @@ class FewsNormSource(models.Model):
         Fill TimeStepCache.
         """
         time_steps = {}
-        for time_step in self.o(Timesteps).all():
+        for time_step in Timesteps.objects.using(self.database_name).all():
             time_step_cache, _ = TimeStepCache.objects.get_or_create(
                 ident=time_step.id)
             time_steps[time_step_cache.ident] = time_step_cache
@@ -555,7 +555,7 @@ class FewsNormSource(models.Model):
     def synchronize_time_series_cache(
         self, locations, parameters, modules, time_steps):
 
-        timeserieskeys = self.o(Series).all()
+        timeserieskeys = Series.objects.using(self.database_name).all()
         for single_timeserieskeys in timeserieskeys:
             logger.debug('processing timeseries: %s %s %s %s' % (
                     single_timeserieskeys.location.id,
@@ -576,22 +576,6 @@ class FewsNormSource(models.Model):
 
     def __unicode__(self):
         return '%s' % (self.name)
-
-    # def o(self, model_object):
-    #     """
-    #     Return Model using database_name.
-
-    #     Using the short name o because the function is supposed to be
-    #     a shortcut.
-
-    #     Example usage:
-
-    #     >>> source = FewsNormSource(name='test', database_name='default')
-    #     >>> source.o(FewsNormSource).all()
-    #     []
-    #     """
-
-    #     return model_object.objects.using(self.database_name)
 
     def api_url(self):
         return reverse(

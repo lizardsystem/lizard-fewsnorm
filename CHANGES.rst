@@ -5,6 +5,8 @@ Changelog of lizard-fewsnorm
 0.3 (unreleased)
 ----------------
 
+- Fixed sync_fewsnorm after removing method FewsNormSource.o.
+
 - Added timeseries api view (displays timeseries as json events).
 
 

@@ -102,17 +102,22 @@ class TimeserieSelectionView(View):
         query = request.GET.get('query', '')
         parts = query.split(',')
 
-        timeseries = TimeSeriesCache.objects.filter(geolocationcache__ident__istartswith=parts[0])
+        timeseries = TimeSeriesCache.objects.filter(
+            geolocationcache__ident__istartswith=parts[0])
 
         if len(parts) > 1:
-            timeseries  = timeseries.filter(parametercache__ident__istartswith=parts[1])
+            timeseries = timeseries.filter(
+                parametercache__ident__istartswith=parts[1])
 
         return [{'id': timeserie.id,
-                 'name': '%s,%s'%(timeserie.geolocationcache.ident, timeserie.parametercache.ident),
+                 'name': '%s,%s,%s' % (timeserie.geolocationcache.ident,
+                                       timeserie.parametercache.ident,
+                                       timeserie.id),
                  'location': timeserie.geolocationcache.ident,
                  'parameter': timeserie.parametercache.ident}
-                for timeserie in timeseries.order_by('geolocationcache__ident', 'parametercache__ident').distinct()[0:25]]
-
+                for timeserie in timeseries.order_by(
+                'geolocationcache__ident',
+                'parametercache__ident').distinct()[0:25]]
 
 
 class ParameterView(View):

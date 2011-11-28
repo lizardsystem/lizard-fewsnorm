@@ -7,6 +7,8 @@ Changelog of lizard-fewsnorm
 
 - Fixed sync_fewsnorm after removing method FewsNormSource.o.
 
+- Extended return string of get() in TimeserieSelectionView.
+
 - Added timeseries api view (displays timeseries as json events).
 
 

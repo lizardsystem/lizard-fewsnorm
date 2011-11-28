@@ -94,7 +94,6 @@ class Parameter(models.Model):
 
     class Meta:
         db_table = u'parameters'
-        #db_schema = 'nskv00_opdb'
         managed = False
 
     def __unicode__(self):

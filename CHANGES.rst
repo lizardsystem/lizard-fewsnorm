@@ -5,7 +5,9 @@ Changelog of lizard-fewsnorm
 0.4 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Added schema prefix for fewsnorm sources. Note that all sources
+  should have the same prefix. Not a problem for now, but later this
+  can be an issue.
 
 
 0.3 (2011-11-28)

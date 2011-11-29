@@ -6,6 +6,7 @@ from django.template.defaultfilters import slugify
 from django.contrib.gis.geos import GEOSGeometry
 from django.db import transaction
 from django.contrib.gis.geos import Point
+from django.conf import settings
 
 from composite_pk import composite
 
@@ -18,6 +19,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# Note: all fewsnorm dbs are assumed to have this schema.
+SCHEMA_PREFIX = 'nskv00_opdb\".\"'
+
+
 class Users(models.Model):
     userkey = models.IntegerField(primary_key=True,
                                   db_column='userkey')
@@ -25,7 +30,7 @@ class Users(models.Model):
     name = models.CharField(max_length=64, blank=True, null=True)
 
     class Meta:
-        db_table = u'users'
+        db_table = SCHEMA_PREFIX + u'users'
         managed = False
 
     def __unicode__(self):
@@ -43,7 +48,7 @@ class ParameterGroups(models.Model):
     displayunit = models.CharField(max_length=64)
 
     class Meta:
-        db_table = u'parametergroups'
+        db_table = SCHEMA_PREFIX + u'parametergroups'
         managed = False
 
     def __unicode__(self):
@@ -72,7 +77,7 @@ class Location(models.Model):
     attributeb = models.FloatField()
 
     class Meta:
-        db_table = u'locations'
+        db_table = SCHEMA_PREFIX + u'locations'
         managed = False
 
     def __unicode__(self):
@@ -93,7 +98,7 @@ class Parameter(models.Model):
     attributeb = models.FloatField()
 
     class Meta:
-        db_table = u'parameters'
+        db_table = SCHEMA_PREFIX + u'parameters'
         managed = False
 
     def __unicode__(self):
@@ -107,7 +112,7 @@ class Qualifiers(models.Model):
     description = models.CharField(max_length=64)
 
     class Meta:
-        db_table = u'qualifiers'
+        db_table = SCHEMA_PREFIX + u'qualifiers'
         managed = False
 
     def __unicode__(self):
@@ -135,7 +140,7 @@ class QualifierSets(models.Model):
                                       blank=True, null=True)
 
     class Meta:
-        db_table = u'qualifiersets'
+        db_table = SCHEMA_PREFIX + u'qualifiersets'
         managed = False
 
     def __unicode__(self):
@@ -150,7 +155,7 @@ class ModuleInstances(models.Model):
     description = models.CharField(max_length=64)
 
     class Meta:
-        db_table = u'moduleinstances'
+        db_table = SCHEMA_PREFIX + u'moduleinstances'
         managed = False
 
     def __unicode__(self):
@@ -165,7 +170,7 @@ class Timesteps(models.Model):
     #label = models.CharField(max_length=64)  # on fewsnorm-dev
 
     class Meta:
-        db_table = u'timesteps'
+        db_table = SCHEMA_PREFIX + u'timesteps'
         managed = False
 
     def __unicode__(self):
@@ -180,7 +185,7 @@ class AggregationPeriods(models.Model):
     description = models.CharField(max_length=64)
 
     class Meta:
-        db_table = u'aggregationperiods'
+        db_table = SCHEMA_PREFIX + u'aggregationperiods'
         managed = False
 
     def __unicode__(self):
@@ -208,7 +213,7 @@ class Series(models.Model):
                                           blank=True, null=True)
 
     class Meta:
-        db_table = u'timeserieskeys'
+        db_table = SCHEMA_PREFIX + u'timeserieskeys'
         managed = False
 
     def __unicode__(self):
@@ -265,7 +270,7 @@ class Event(composite.CompositePKModel):
     comment = None  # not yet there
 
     class Meta:
-        db_table = u'timeseriesvaluesandflags'
+        db_table = SCHEMA_PREFIX + u'timeseriesvaluesandflags'
         managed = False
 
     def __unicode__(self):
@@ -318,7 +323,7 @@ class TimeseriesComments(models.Model):
     comments = models.CharField(max_length=64)
 
     class Meta:
-        db_table = u'timeseriescomments'
+        db_table = SCHEMA_PREFIX + u'timeseriescomments'
         managed = False
 
     def __unicode__(self):
@@ -338,7 +343,7 @@ class TimeseriesManualEditsHistory(models.Model):
     comments = models.CharField(max_length=64)
 
     class Meta:
-        db_table = u'timeseriesmanualeditshistory'
+        db_table = SCHEMA_PREFIX + u'timeseriesmanualeditshistory'
         managed = False
 
     def __unicode__(self):

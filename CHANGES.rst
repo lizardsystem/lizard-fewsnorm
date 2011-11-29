@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.4 (unreleased)
+0.4 (2011-11-29)
 ----------------
 
 - Added schema prefix for fewsnorm sources. Note that all sources

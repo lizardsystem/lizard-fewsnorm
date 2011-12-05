@@ -100,24 +100,34 @@ class TimeserieSelectionView(View):
     """
     def get(self, request, *args, **kwargs):
         query = request.GET.get('query', '')
+        fixed_parameter = request.GET.get('fixedParameter', None)
+        start = int(request.GET.get('start', 0))
+        limit = int(request.GET.get('limit', 20))
         parts = query.split(',')
 
         timeseries = TimeSeriesCache.objects.filter(
             geolocationcache__ident__istartswith=parts[0])
 
-        if len(parts) > 1:
+        if fixed_parameter:
+            timeseries = timeseries.filter(
+                parametercache__ident__istartswith=fixed_parameter)
+        elif len(parts) > 1:
             timeseries = timeseries.filter(
                 parametercache__ident__istartswith=parts[1])
 
-        return [{'id': timeserie.id,
-                 'name': '%s,%s,%s' % (timeserie.geolocationcache.ident,
-                                       timeserie.parametercache.ident,
-                                       timeserie.id),
-                 'location': timeserie.geolocationcache.ident,
-                 'parameter': timeserie.parametercache.ident}
-                for timeserie in timeseries.order_by(
-                'geolocationcache__ident',
-                'parametercache__ident').distinct()[0:25]]
+
+        return {'data': [{'id': timeserie.id,
+                         'name': '%s,%s,%s' % (timeserie.geolocationcache.ident,
+                                               timeserie.parametercache.ident,
+                                               timeserie.id),
+                         'location': timeserie.geolocationcache.ident,
+                         'parameter': timeserie.parametercache.ident}
+                        for timeserie in timeseries.order_by(
+                        'geolocationcache__ident',
+                        'parametercache__ident').distinct()[start:(start + limit)]],
+                'total': timeseries.count()}
+
+
 
 
 class ParameterView(View):

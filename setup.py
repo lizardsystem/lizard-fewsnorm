@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = '0.5dev'
+version = '0.5'
 
 long_description = '\n\n'.join([
     open('README.rst').read(),
@@ -16,6 +16,7 @@ install_requires = [
     'lizard-ui >= 3.0',
     'lizard-map >= 3.2',
     'lizard-geo',
+    'timeseries >= 0.13',
     'pkginfo',
     'django-compositepk',
     ],

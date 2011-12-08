@@ -1,4 +1,6 @@
 # (c) Nelen & Schuurmans.  GPL licensed, see LICENSE.txt.
+import datetime
+
 from django.contrib.gis.db import models
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -14,6 +16,9 @@ from lizard_geo.models import GeoObject
 from lizard_geo.models import GeoObjectGroup
 
 from lizard_map.coordinates import rd_to_wgs84
+
+from timeseries import timeseries
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -223,36 +228,36 @@ class Series(models.Model):
             self.qualifierset,
             self.moduleinstance)
 
-    @classmethod
-    def from_lppairs(cls, lppairs):
-        """select series matching zipped location parameter iterable.
-        """
+#     @classmethod
+#     def from_lppairs(cls, lppairs):
+#         """select series matching zipped location parameter iterable.
+#         """
 
-        location = None
-        for (l, p) in lppairs:
-            try:
-                location = GeoLocationCache.objects.get(ident=l)
-                break
-            except:
-                pass
-        if location is None:
-            return None
+#         location = None
+#         for (l, p) in lppairs:
+#             try:
+#                 location = GeoLocationCache.objects.get(ident=l)
+#                 break
+#             except:
+#                 pass
+#         if location is None:
+#             return None
 
-        db_name = location.fews_norm_source.database_name
+#         db_name = location.fews_norm_source.database_name
 
-        locations = Location.objects.using(db_name).filter(
-            id__in=[l for (l, p) in lppairs])
-        parameters = Parameter.objects.using(db_name).filter(
-            id__in=[p for (l, p) in lppairs])
+#         locations = Location.objects.using(db_name).filter(
+#             id__in=[l for (l, p) in lppairs])
+#         parameters = Parameter.objects.using(db_name).filter(
+#             id__in=[p for (l, p) in lppairs])
 
-        l_id_to_pk = dict((l.id, l.pk) for l in locations)
-        p_id_to_pk = dict((p.id, p.pk) for p in parameters)
+#         l_id_to_pk = dict((l.id, l.pk) for l in locations)
+#         p_id_to_pk = dict((p.id, p.pk) for p in parameters)
 
-        keys = tuple((l_id_to_pk[l], p_id_to_pk[p]) for (l, p) in lppairs)
+#         keys = tuple((l_id_to_pk[l], p_id_to_pk[p]) for (l, p) in lppairs)
 
-        return cls.objects.raw("\
-SELECT * FROM \"timeserieskeys\" \
-WHERE (locationkey, parameterkey) IN %s" % (keys,)).using(db_name)
+#         return cls.objects.raw("\
+# SELECT * FROM \"timeserieskeys\" \
+# WHERE (locationkey, parameterkey) IN %s" % (keys,)).using(db_name)
 
 
 class Event(composite.CompositePKModel):
@@ -298,20 +303,22 @@ class Event(composite.CompositePKModel):
         location = GeoLocationCache.objects.get(ident=first_serie.location.id)
         db_name = location.fews_norm_source.database_name
 
-        series_set__pk = tuple(s.pk for s in series_set)
+        series_set__pk = ','.join(tuple(str(s.pk) for s in series_set))
         deadline__iso = deadline.isoformat()
 
         ## execute the query.
         return cls.objects.raw("""\
-SELECT e.* FROM timeseriesvaluesandflags e
+SELECT e.* FROM \"%(schema_prefix)stimeseriesvaluesandflags\" e
   JOIN (SELECT serieskey, max(datetime) AS datetime
-        FROM timeseriesvaluesandflags
-        WHERE serieskey in %s
-          AND datetime < '%s'
+        FROM \"%(schema_prefix)stimeseriesvaluesandflags\"
+        WHERE serieskey in (%(serieskey)s)
+          AND datetime < '%(deadline)s'
               GROUP BY serieskey) latest
   ON e.serieskey = latest.serieskey
-  AND e.datetime = latest.datetime""" % (
-                series_set__pk, deadline__iso)).using(db_name)
+  AND e.datetime = latest.datetime""" % {
+                'schema_prefix': SCHEMA_PREFIX,
+                'serieskey': series_set__pk,
+                'deadline': deadline__iso}).using(db_name)
 
 
 class TimeseriesComments(models.Model):
@@ -442,6 +449,46 @@ class TimeSeriesCache(models.Model):
     def api_url(self):
         return reverse('lizard_fewsnorm_api_timeseries_detail',
                        kwargs={'id': self.id})
+
+    def _series_set(self):
+        """
+        Return django QuerySet of Series.
+        """
+        db_name = self.geolocationcache.fews_norm_source.database_name
+        series_query = (
+            "SELECT * from \"%(schema_prefix)stimeserieskeys\" as ts, "
+            "\"%(schema_prefix)sparameters\" as p, "
+            "\"%(schema_prefix)slocations\" as l, "
+            "\"%(schema_prefix)smoduleinstances\" as m "
+            "WHERE "
+            "ts.parameterkey = p.parameterkey and "
+            "ts.locationkey = l.locationkey and "
+            "ts.moduleinstancekey = m.moduleinstancekey and "
+            "(l.id, p.id, m.id) IN "
+            "(('%(loc_id)s', '%(par_id)s', '%(mod_id)s'))" % (
+                {'schema_prefix':SCHEMA_PREFIX,
+                 'loc_id': str(self.geolocationcache.ident),
+                 'par_id': str(self.parametercache.ident),
+                 'mod_id': str(self.modulecache.ident) }))
+        return Series.objects.raw(series_query).using(db_name)
+
+    def get_latest_event(self, now=None):
+        """
+        Return latest event for this timeseries.
+        """
+        if now is None:
+            now = datetime.datetime.now()
+        series_set = self._series_set()
+        return Event.filter_latest_before_deadline(series_set, now)[0]
+
+    def get_timeseries(self, dt_start, dt_end):
+        """
+        Return TimeSeries dictionary.
+
+        Key is (location, parameter), Value is TimeSeries object.
+        """
+        series_set = self._series_set()
+        return timeseries.TimeSeries.as_dict(series_set, dt_start, dt_end)
 
 
 class FewsNormSource(models.Model):

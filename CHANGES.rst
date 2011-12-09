@@ -5,7 +5,7 @@ Changelog of lizard-fewsnorm
 0.6 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Added fixed filter functionality with fixed parameter for timeserie selection api
 
 
 0.5.1 (2011-12-08)

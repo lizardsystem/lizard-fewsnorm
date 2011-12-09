@@ -2,10 +2,22 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.5 (unreleased)
+0.6 (unreleased)
 ----------------
 
 - Nothing changed yet.
+
+
+0.5.1 (2011-12-08)
+------------------
+
+- Nothing changed yet.
+
+
+0.5 (2011-12-08)
+----------------
+
+- Added TimeSeriesCache function get_latest_event and get_timeseries.
 
 
 0.4 (2011-11-29)

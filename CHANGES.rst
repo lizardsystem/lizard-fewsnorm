@@ -5,7 +5,7 @@ Changelog of lizard-fewsnorm
 0.7 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Created tasks.py to run sync_fewsnorm from celery.
 
 
 0.6 (2011-12-09)

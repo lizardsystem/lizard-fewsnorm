@@ -88,6 +88,12 @@ class Location(models.Model):
     def __unicode__(self):
         return u'%s' % self.id
 
+    def natural_key(self):
+        return self.id
+
+    def get_by_natural_key(self, id):
+        return self.get(id=id)
+
 
 class Parameter(models.Model):
     parameterkey = models.IntegerField(primary_key=True,
@@ -108,6 +114,12 @@ class Parameter(models.Model):
 
     def __unicode__(self):
         return '%s' % self.id
+
+    def natural_key(self):
+        return self.id
+
+    def get_by_natural_key(self, id):
+        return self.get(id=id)
 
 
 class Qualifiers(models.Model):
@@ -372,6 +384,12 @@ class ParameterCache(models.Model):
         return reverse('lizard_fewsnorm_api_parameter_detail',
                        kwargs={'ident': self.ident})
 
+    def natural_key(self):
+        return self.ident
+
+    def get_by_natural_key(self, ident):
+        return self.get(ident=ident)
+
 
 class ModuleCache(models.Model):
     ident = models.CharField(max_length=64)
@@ -382,8 +400,11 @@ class ModuleCache(models.Model):
     def __unicode__(self):
         return u'%s' % self.ident
 
-    # def api_url(self):
-    #     return reverse('lizard_fewsnorm_api_module')
+    def natural_key(self):
+        return self.ident
+
+    def get_by_natural_key(self, ident):
+        return self.get(ident=ident)
 
 
 class TimeStepCache(models.Model):
@@ -427,6 +448,12 @@ class GeoLocationCache(GeoObject):
     def api_url(self):
         return reverse('lizard_fewsnorm_api_location_detail',
                        kwargs={'ident': self.ident})
+
+    def natural_key(self):
+        return self.ident
+
+    def get_by_natural_key(self, ident):
+        return self.get(ident=ident)
 
 
 class TimeSeriesCache(models.Model):

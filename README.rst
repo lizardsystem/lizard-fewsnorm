@@ -42,11 +42,14 @@ Each time a fews norm database is added to your fewsnorm data source you need sy
 
 You also need synchronizing when locations, parameters and/or moduleinstances are added.
 
-In practice, you need synchronize regularly.
+In practice, you need to synchronize regularly. To sync your locations, timeseries, parameters, modules::
 
-To sync your locations::
+    $> bin/django sync_fewsnorm
 
-    $> bin/django sync_fewsnorm --user_name=<django user name>
+What it does is updating all existing locations, timeseries. Locations
+and timeseries that do not exist in the source get a flag
+inactive. Since version 0.7, objects are not re-created anymore, so it
+is safe to run sync_fewsnorm and not break your dependencies.
 
 
 dumpdata

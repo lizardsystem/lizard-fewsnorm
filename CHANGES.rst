@@ -5,11 +5,17 @@ Changelog of lizard-fewsnorm
 0.7 (unreleased)
 ----------------
 
-- Added natural key functions to ParameterCache, ModuleCache and
-  GeoLocationCache. They are used when you use dumpdata with the
-  natural option.
+- Improved sync_fewsnorm: All objects are updated and objects not in
+  the source are set to inactive. Before, it deleted all entries
+  and re-inserts them.
+
+- Added lizard_security.
 
 - Created tasks.py to run sync_fewsnorm from celery.
+
+- Added natural key functions to all cache objects. They are used when
+  you use dumpdata with the natural option. They cannot be loaded
+  yet.
 
 
 0.6 (2011-12-09)

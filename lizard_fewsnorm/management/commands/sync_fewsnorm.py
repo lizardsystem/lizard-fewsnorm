@@ -13,58 +13,63 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     """
-    Synchronizes the location of datasources
-    into GeoLocationCache.
+    Synchronizes locations of datasources into GeoLocationCache.
     """
 
-    help = ("Example: bin/django synchronize_geo_location_cache "\
-            "--source=fewsnorm1 --user_name=buildout")
+    help = ("Example: bin/django sync_fewsnorm "\
+            "--source=fewsnorm1 --data_set=MyDataSet")
 
     option_list = BaseCommand.option_list + (
         make_option('--db_name',
                     help='name of fewsnorm database, optionally',
                     type='str',
                     default=None),
-        make_option('--user_name',
-                    help='user name',
+        make_option('--data_set',
+                    help='name of the data set',
                     type='str',
                     default=None))
 
     def get_sources(self, source):
         if source is None:
-            return FewsNormSource.objects.all()
+            logger.info("No database provided, taking all FewsNormSource "
+                        "entries.")
+            return FewsNormSource.objects.filter(active=True)
         else:
+            logger.info("Filtering FewsNormSource on database_name='%s'." %
+                        source)
+            # Note: you can also sync non-active sources.
             return FewsNormSource.objects.filter(database_name=source)
 
     @transaction.commit_on_success
     def handle(self, *args, **options):
-        user_name = options["user_name"]
-        if user_name is None:
-            logger.error("Provide a user_name, use --help for usage.")
-            return
+        data_set_name = name=options["data_set"]
+        if data_set_name:
+            data_set = DataSet.objects.get(name=data_set_name)
+        else:
+            data_set = None
 
         sources = self.get_sources(options["db_name"])
         if not sources:
-            logger.info("No databases selected. Check your db_name, "
-                        "if provided.")
+            logger.info("No databases selected. Check your database "
+                        "settings and db_name (if provided) .")
         for source in sources:
             logger.debug(
-                'Creating ParameterCache for fewsnorm %s...', source.name)
-            parameters = source.synchronize_parameter_cache()
+                'Updating ParameterCache for fewsnorm %s...', source.name)
+            parameters = source.sync_parameter_cache()
 
             logger.debug(
-                'Creating ModuleCache for fewsnorm %s...', source.name)
-            modules = source.synchronize_module_cache()
+                'Updating ModuleCache for fewsnorm %s...', source.name)
+            modules = source.sync_module_cache()
 
             logger.debug(
-                'Creating TimeStepCache for fewsnorm %s...', source.name)
-            time_steps = source.synchronize_time_step_cache()
+                'Updating TimeStepCache for fewsnorm %s...', source.name)
+            time_steps = source.sync_time_step_cache()
 
             logger.debug(
-                'Creating GeoLocationCache for fewsnorm %s...', source.name)
-            locations = source.synchronize_location_cache(user_name)
+                'Updating GeoLocationCache for fewsnorm %s...', source.name)
+            locations = source.sync_location_cache(data_set)
 
             logger.debug(
-                'Creating TimeSeriesCache for fewsnorm %s...', source.name)
-            source.synchronize_time_series_cache(
+                'Updating TimeSeriesCache for fewsnorm %s...', source.name)
+            source.sync_time_series_cache(
                 locations, parameters, modules, time_steps)

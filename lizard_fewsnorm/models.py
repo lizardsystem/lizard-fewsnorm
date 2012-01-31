@@ -17,6 +17,9 @@ from lizard_geo.models import GeoObjectGroup
 
 from lizard_map.coordinates import rd_to_wgs84
 
+from lizard_security.manager import FilteredGeoManager
+from lizard_security.models import DataSet
+
 from timeseries import timeseries
 
 
@@ -25,7 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 # Note: all fewsnorm dbs are assumed to have this schema.
-SCHEMA_PREFIX = 'nskv00_opdb\".\"'
+#SCHEMA_PREFIX = 'nskv00_opdb\".\"'
+SCHEMA_PREFIX = 'kvwn00_opdb\".\"'
+#SCHEMA_PREFIX = 'kvrl00_opdb\".\"'
 
 
 class Users(models.Model):
@@ -88,12 +93,14 @@ class Location(models.Model):
     def __unicode__(self):
         return u'%s' % self.id
 
-    def natural_key(self):
-        return self.id
 
-    def get_by_natural_key(self, id):
-        return self.get(id=id)
+# TODO: flexible schema_prefix
+# def getParameterModel(schema_prefix=None):
 
+#     class ParameterMetaclass(models.base.ModelBase):
+#         def __new__(cls, name, bases, attrs):
+#             name += schema_prefix
+#             return models.base.ModelBase.__new__(cls, name, bases, attrs)
 
 class Parameter(models.Model):
     parameterkey = models.IntegerField(primary_key=True,
@@ -114,12 +121,6 @@ class Parameter(models.Model):
 
     def __unicode__(self):
         return '%s' % self.id
-
-    def natural_key(self):
-        return self.id
-
-    def get_by_natural_key(self, id):
-        return self.get(id=id)
 
 
 class Qualifiers(models.Model):
@@ -385,7 +386,7 @@ class ParameterCache(models.Model):
                        kwargs={'ident': self.ident})
 
     def natural_key(self):
-        return self.ident
+        return (self.ident, )
 
     def get_by_natural_key(self, ident):
         return self.get(ident=ident)
@@ -401,7 +402,7 @@ class ModuleCache(models.Model):
         return u'%s' % self.ident
 
     def natural_key(self):
-        return self.ident
+        return (self.ident, )
 
     def get_by_natural_key(self, ident):
         return self.get(ident=ident)
@@ -416,11 +417,18 @@ class TimeStepCache(models.Model):
     def __unicode__(self):
         return u'%s' % self.ident
 
+    def natural_key(self):
+        return (self.ident, )
+
+    def get_by_natural_key(self, ident):
+        return self.get(ident=ident)
+
 
 class GeoLocationCache(GeoObject):
     """
     Geo cache for locations from all data sources.
     """
+    data_set = models.ForeignKey(DataSet, null=True, blank=True)
     fews_norm_source = models.ForeignKey('FewsNormSource')
     name = models.CharField(max_length=64)
     shortname = models.CharField(max_length=64)
@@ -432,7 +440,8 @@ class GeoLocationCache(GeoObject):
         ModuleCache, null=True, blank=True, through='TimeSeriesCache')
     timestep = models.ManyToManyField(
         TimeStepCache, null=True, blank=True, through='TimeSeriesCache')
-    objects = models.GeoManager()
+    active = models.BooleanField(default=True)
+    objects = FilteredGeoManager()
 
     class Meta:
         ordering = ('ident', 'name')
@@ -450,10 +459,10 @@ class GeoLocationCache(GeoObject):
                        kwargs={'ident': self.ident})
 
     def natural_key(self):
-        return self.ident
+        return (self.ident, )
 
     def get_by_natural_key(self, ident):
-        return self.get(ident=ident)
+        return self.get(ident=ident),
 
 
 class TimeSeriesCache(models.Model):
@@ -466,6 +475,11 @@ class TimeSeriesCache(models.Model):
     parametercache = models.ForeignKey(ParameterCache)
     modulecache = models.ForeignKey(ModuleCache)
     timestepcache = models.ForeignKey(TimeStepCache)
+    active = models.BooleanField(default=True)
+
+    # class Meta:
+    #     unique_together = ('geolocationcache', 'parametercache',
+    #                        'modulecache', 'timestepcache')
 
     def __unicode__(self):
         return '%s,%s,%s' % (
@@ -517,6 +531,20 @@ class TimeSeriesCache(models.Model):
         series_set = self._series_set()
         return timeseries.TimeSeries.as_dict(series_set, dt_start, dt_end)
 
+    def natural_key(self):
+        return (
+            self.geolocationcache.ident,
+            self.parametercache.ident,
+            self.modulecache.ident,
+            self.timestepcache.ident)
+
+    def get_by_natural_key(self, loc_id, par_id, mod_id, tst_id):
+        return self.get(
+            geolocationcache__ident=loc_id,
+            parametercache__ident=loc_id,
+            modulecache__ident=loc_id,
+            timestepcache__ident=loc_id,)
+
 
 class FewsNormSource(models.Model):
     """
@@ -525,40 +553,49 @@ class FewsNormSource(models.Model):
     name = models.CharField(max_length=128)
     slug = models.SlugField(unique=True)
     database_name = models.CharField(max_length=40, unique=True)
+    database_schema_name = models.CharField(
+        max_length=80, null=True, blank=True)
+    active = models.BooleanField(default=True)
 
-    def _empty_cache(self):
-        logger.debug('Empty GeoLocationCache for fewsnorm %s...', self.name)
-        self.geolocationcache_set.all().delete()
+    # def _empty_cache(self):
+    #     logger.debug('Empty GeoLocationCache for fewsnorm %s...', self.name)
+    #     self.geolocationcache_set.all().delete()
 
     def source_locations(self):
         return Location.objects.using(self.database_name).all()
 
-    def get_or_create_geoobjectgroup(self, user_name):
-        user_obj = User.objects.get(username=user_name)
+    def get_or_create_geoobjectgroup(self, user_name=None):
+        if user_name is None:
+            user_obj = User.objects.all()[0]  # Random user
+        else:
+            user_obj = User.objects.get(username=user_name)
         group_name = 'FEWSNORM::%s' % self.database_name
         group_slug = slugify(group_name)
         geo_object_group, created = GeoObjectGroup.objects.get_or_create(
             name=group_name, slug=group_slug, created_by=user_obj)
         if created:
+            logger.info('Newly created geoobjectgroup %s' % geo_object_group)
             geo_object_group.source_log = 'FEWSNORM::%s' % self.database_name
             geo_object_group.save()
         return geo_object_group
 
     @transaction.commit_on_success
-    def synchronize_parameter_cache(self):
+    def sync_parameter_cache(self):
         """
         Fill ParameterCache
         """
         parameters = {}
         for parameter in Parameter.objects.using(self.database_name).all():
-            logger.debug('Get or create parameter cache %s', parameter.id)
-            parameter_cache, _ = ParameterCache.objects.get_or_create(
+            #logger.debug('Get or create parameter cache %s', parameter.id)
+            parameter_cache, created = ParameterCache.objects.get_or_create(
                 ident=parameter.id)
             parameters[parameter_cache.ident] = parameter_cache
+            if created:
+                logger.info('Newly created parameter %s' % parameter_cache)
         return parameters
 
     @transaction.commit_on_success
-    def synchronize_module_cache(self):
+    def sync_module_cache(self):
         """
         Fill ModuleCache.
         """
@@ -570,7 +607,7 @@ class FewsNormSource(models.Model):
         return modules
 
     @transaction.commit_on_success
-    def synchronize_time_step_cache(self):
+    def sync_time_step_cache(self):
         """
         Fill TimeStepCache.
         """
@@ -582,45 +619,75 @@ class FewsNormSource(models.Model):
         return time_steps
 
     @transaction.commit_on_success
-    def synchronize_location_cache(
-        self, user_name):
+    def sync_location_cache(
+        self, data_set=None, user_name=None):
         """
         Fill GeoLocationCache.
+
+        Inactivates all existing entries, then re-enable all
+        occurrences that are present in the source.
 
         parameters and modules are dicts with ParameterCache and
         ModuleCache. Keys are their idents.
         """
-        self._empty_cache()  # For GeoLocationCache
         source_locations = self.source_locations()
         geo_object_group = self.get_or_create_geoobjectgroup(user_name)
         locations = {}
-        for location in source_locations:
-            logger.debug('processing location.id: %s' % location.id)
-            wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
-            geo_location_cache = GeoLocationCache(
-                ident=location.id[:80],
-                fews_norm_source=self,
-                name='%s' % location.name,
-                shortname='%s' % location.shortname,
-                icon='%s' % location.icon,
-                tooltip='%s' % location.tooltip,
-                geo_object_group=geo_object_group,
-                geometry=GEOSGeometry(Point(wgs84_x, wgs84_y), srid=4326))
+        for geo_location_cache in GeoLocationCache.objects.filter(
+            fews_norm_source=self):
+
+            geo_location_cache.active = False
             geo_location_cache.save()
+        for location in source_locations:
+            # logger.debug('processing location.id: %s' % location.id)
+            wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
+            params = {
+                'data_set': data_set,
+                'fews_norm_source': self,
+                'name': '%s' % location.name,
+                'shortname': '%s' % location.shortname,
+                'icon' : '%s' % location.icon,
+                'tooltip': '%s' % location.tooltip,
+                'geo_object_group': geo_object_group,
+                'geometry': GEOSGeometry(
+                    Point(wgs84_x, wgs84_y), srid=4326),
+                'active': True}
+            geo_location_cache, created = GeoLocationCache.objects.get_or_create(
+                ident=location.id[:80], defaults=params)
+            if not created:
+                for k, v in params.items():
+                    geo_location_cache.__setattr__(k, v)
+                geo_location_cache.save()
+            if created:
+                logger.info('Newly created location %s' % geo_location_cache)
             locations[geo_location_cache.ident] = geo_location_cache
+        inactive_locations = GeoLocationCache.objects.filter(
+            fews_norm_source=self, active=False)
+        if inactive_locations:
+            logger.warning('Warning: there are inactive locations for '
+                           'fews_norm_source %s:' % self)
+            for inactive_location in inactive_locations:
+                logger.warning('Inactive location: %s' % inactive_location)
         return locations
 
-    def synchronize_time_series_cache(
-        self, locations, parameters, modules, time_steps):
+    def sync_time_series_cache(
+        self, locations, parameters, modules, time_steps, data_set_name=None):
+        """
+        Synchronize the time series cache with the source.
 
+        Inactivates all existing entries, then re-enable all
+        occurrences that are present in the source.
+
+        Note that active timeseries CAN refer to an inactive location.
+        """
         timeserieskeys = Series.objects.using(self.database_name).all()
+        for time_series_cache in TimeSeriesCache.objects.filter(
+            geolocationcache__fews_norm_source=self):
+
+            time_series_cache.active = False
+            time_series_cache.save()
         for single_timeserieskeys in timeserieskeys:
-            logger.debug('processing timeseries: %s %s %s %s' % (
-                    single_timeserieskeys.location.id,
-                    single_timeserieskeys.parameter.id,
-                    single_timeserieskeys.moduleinstance.id,
-                    single_timeserieskeys.timestep.id))
-            time_series_cache = TimeSeriesCache(
+            time_series_cache, created = TimeSeriesCache.objects.get_or_create(
                 geolocationcache=locations[
                     single_timeserieskeys.location.id],
                 parametercache=parameters[
@@ -629,8 +696,20 @@ class FewsNormSource(models.Model):
                     single_timeserieskeys.moduleinstance.id],
                 timestepcache=time_steps[
                     single_timeserieskeys.timestep.id],
+                defaults={'active': True}
                 )
+            time_series_cache.active = True
             time_series_cache.save()
+            if created:
+                logger.info('Newly created timeseries %s' % time_series_cache)
+        inactive_timeseries = TimeSeriesCache.objects.filter(
+            geolocationcache__fews_norm_source=self, active=False)
+        if inactive_timeseries:
+            logger.warning('Warning: there are inactive timeseries for '
+                           'fews_norm_source %s:' % self)
+            for inactive_single_timeseries in inactive_timeseries:
+                logger.warning('Inactive timeseries: %s' %
+                               inactive_single_timeseries)
 
     def __unicode__(self):
         return '%s' % (self.name)

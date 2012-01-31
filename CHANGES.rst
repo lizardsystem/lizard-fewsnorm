@@ -2,8 +2,8 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.8 (unreleased)
-----------------
+0.7.1 (2012-01-31)
+------------------
 
 - Fixed bug in option sync_fewsnorm.
 

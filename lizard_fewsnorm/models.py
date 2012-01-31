@@ -8,7 +8,7 @@ from django.template.defaultfilters import slugify
 from django.contrib.gis.geos import GEOSGeometry
 from django.db import transaction
 from django.contrib.gis.geos import Point
-from django.conf import settings
+#from django.conf import settings
 
 from composite_pk import composite
 
@@ -507,10 +507,10 @@ class TimeSeriesCache(models.Model):
             "ts.moduleinstancekey = m.moduleinstancekey and "
             "(l.id, p.id, m.id) IN "
             "(('%(loc_id)s', '%(par_id)s', '%(mod_id)s'))" % (
-                {'schema_prefix':SCHEMA_PREFIX,
+                {'schema_prefix': SCHEMA_PREFIX,
                  'loc_id': str(self.geolocationcache.ident),
                  'par_id': str(self.parametercache.ident),
-                 'mod_id': str(self.modulecache.ident) }))
+                 'mod_id': str(self.modulecache.ident)}))
         return Series.objects.raw(series_query).using(db_name)
 
     def get_latest_event(self, now=None):
@@ -646,19 +646,19 @@ class FewsNormSource(models.Model):
                 'fews_norm_source': self,
                 'name': '%s' % location.name,
                 'shortname': '%s' % location.shortname,
-                'icon' : '%s' % location.icon,
+                'icon': '%s' % location.icon,
                 'tooltip': '%s' % location.tooltip,
                 'geo_object_group': geo_object_group,
                 'geometry': GEOSGeometry(
                     Point(wgs84_x, wgs84_y), srid=4326),
                 'active': True}
-            geo_location_cache, created = GeoLocationCache.objects.get_or_create(
+            geo_location_cache, cr = GeoLocationCache.objects.get_or_create(
                 ident=location.id[:80], defaults=params)
-            if not created:
+            if not cr:
                 for k, v in params.items():
                     geo_location_cache.__setattr__(k, v)
                 geo_location_cache.save()
-            if created:
+            if cr:
                 logger.info('Newly created location %s' % geo_location_cache)
             locations[geo_location_cache.ident] = geo_location_cache
         inactive_locations = GeoLocationCache.objects.filter(

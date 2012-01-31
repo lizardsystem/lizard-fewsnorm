@@ -7,6 +7,8 @@ from django.core.management.base import BaseCommand
 from lizard_fewsnorm.models import FewsNormSource
 from django.db import transaction
 
+from lizard_security.models import DataSet
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ class Command(BaseCommand):
 
     @transaction.commit_on_success
     def handle(self, *args, **options):
-        data_set_name = name=options["data_set"]
+        data_set_name = options["data_set"]
         if data_set_name:
             data_set = DataSet.objects.get(name=data_set_name)
         else:

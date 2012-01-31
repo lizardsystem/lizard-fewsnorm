@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.7 (unreleased)
+0.7 (2012-01-31)
 ----------------
 
 - Improved sync_fewsnorm: All objects are updated and objects not in

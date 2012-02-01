@@ -48,6 +48,7 @@ DATABASES = {
 
 SITE_ID = 1
 INSTALLED_APPS = [
+    'lizard_security',
     'lizard_geo',
     'lizard_fewsnorm',
     'lizard_ui',
@@ -85,7 +86,6 @@ TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 STATIC_URL = '/static_media/'
 STATIC_ROOT = os.path.join(BUILDOUT_DIR, 'var', 'static')
 STATICFILES_FINDERS = STATICFILES_FINDERS
-
 
 try:
     # Import local settings that aren't stored in svn/git.

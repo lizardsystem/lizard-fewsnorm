@@ -436,17 +436,18 @@ class TimeStepCache(models.Model):
         return (self.ident, )
 
 
-# class GeoLocationCacheManager(FilteredGeoManager):
-#     def get_by_natural_key(self, ident):
-#         return self.get(ident=ident),
+class GeoLocationCacheManager(FilteredGeoManager):
+    def get_by_natural_key(self, ident):
+        # Normally we would use self.get, but that doesn't work in
+        # this case.
+        return GeoLocationCache.objects.get(ident=ident)
 
 
 class GeoLocationCache(GeoObject):
     """
     Geo cache for locations from all data sources.
     """
-    #objects = GeoLocationCacheManager()
-    objects = FilteredGeoManager()
+    objects = GeoLocationCacheManager()
 
     data_set = models.ForeignKey(DataSet, null=True, blank=True)
     fews_norm_source = models.ForeignKey('FewsNormSource')
@@ -477,8 +478,8 @@ class GeoLocationCache(GeoObject):
         return reverse('lizard_fewsnorm_api_location_detail',
                        kwargs={'ident': self.ident})
 
-    # def natural_key(self):
-    #     return (self.ident, )
+    def natural_key(self):
+        return (self.ident, )
 
 
 class TimeSeriesCache(models.Model):

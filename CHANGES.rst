@@ -5,8 +5,7 @@ Changelog of lizard-fewsnorm
 0.7.2 (unreleased)
 ------------------
 
-- Load and dump using natural keys now works, except for
-  GeoLocationCache because it is inherited from another model.
+- Load and dump using natural keys now works.
 
 
 0.7.1 (2012-01-31)

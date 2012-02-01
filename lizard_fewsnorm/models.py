@@ -372,7 +372,14 @@ class TimeseriesManualEditsHistory(models.Model):
 
 # Managed models that are in the default database.
 
+class ParameterCacheManager(models.Manager):
+    def get_by_natural_key(self, ident):
+        return self.get(ident=ident)
+
+
 class ParameterCache(models.Model):
+    objects = ParameterCacheManager()
+
     ident = models.CharField(max_length=64)
 
     class Meta:
@@ -388,11 +395,15 @@ class ParameterCache(models.Model):
     def natural_key(self):
         return (self.ident, )
 
+
+class ModuleCacheManager(models.Manager):
     def get_by_natural_key(self, ident):
         return self.get(ident=ident)
 
 
 class ModuleCache(models.Model):
+    objects = ModuleCacheManager()
+
     ident = models.CharField(max_length=64)
 
     class Meta:
@@ -404,11 +415,15 @@ class ModuleCache(models.Model):
     def natural_key(self):
         return (self.ident, )
 
+
+class TimeStepCacheManager(models.Manager):
     def get_by_natural_key(self, ident):
         return self.get(ident=ident)
 
 
 class TimeStepCache(models.Model):
+    objects = TimeStepCacheManager()
+
     ident = models.CharField(max_length=64)
 
     class Meta:
@@ -420,14 +435,19 @@ class TimeStepCache(models.Model):
     def natural_key(self):
         return (self.ident, )
 
-    def get_by_natural_key(self, ident):
-        return self.get(ident=ident)
+
+# class GeoLocationCacheManager(FilteredGeoManager):
+#     def get_by_natural_key(self, ident):
+#         return self.get(ident=ident),
 
 
 class GeoLocationCache(GeoObject):
     """
     Geo cache for locations from all data sources.
     """
+    #objects = GeoLocationCacheManager()
+    objects = FilteredGeoManager()
+
     data_set = models.ForeignKey(DataSet, null=True, blank=True)
     fews_norm_source = models.ForeignKey('FewsNormSource')
     name = models.CharField(max_length=64)
@@ -441,7 +461,6 @@ class GeoLocationCache(GeoObject):
     timestep = models.ManyToManyField(
         TimeStepCache, null=True, blank=True, through='TimeSeriesCache')
     active = models.BooleanField(default=True)
-    objects = FilteredGeoManager()
 
     class Meta:
         ordering = ('ident', 'name')
@@ -458,11 +477,8 @@ class GeoLocationCache(GeoObject):
         return reverse('lizard_fewsnorm_api_location_detail',
                        kwargs={'ident': self.ident})
 
-    def natural_key(self):
-        return (self.ident, )
-
-    def get_by_natural_key(self, ident):
-        return self.get(ident=ident),
+    # def natural_key(self):
+    #     return (self.ident, )
 
 
 class TimeSeriesCache(models.Model):
@@ -530,20 +546,6 @@ class TimeSeriesCache(models.Model):
         """
         series_set = self._series_set()
         return timeseries.TimeSeries.as_dict(series_set, dt_start, dt_end)
-
-    def natural_key(self):
-        return (
-            self.geolocationcache.ident,
-            self.parametercache.ident,
-            self.modulecache.ident,
-            self.timestepcache.ident)
-
-    def get_by_natural_key(self, loc_id, par_id, mod_id, tst_id):
-        return self.get(
-            geolocationcache__ident=loc_id,
-            parametercache__ident=loc_id,
-            modulecache__ident=loc_id,
-            timestepcache__ident=loc_id,)
 
 
 class FewsNormSource(models.Model):

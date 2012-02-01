@@ -2,8 +2,8 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.7.2 (unreleased)
-------------------
+0.8 (2012-02-01)
+----------------
 
 - Load and dump using natural keys now works.
 

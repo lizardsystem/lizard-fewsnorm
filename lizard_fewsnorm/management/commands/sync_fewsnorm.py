@@ -72,6 +72,10 @@ class Command(BaseCommand):
             locations = source.sync_location_cache(data_set)
 
             logger.debug(
+                'Updating QualifierSetCache for fewsnorm %s...', source.name)
+            qualifier_sets = source.sync_qualifier_set_cache()
+
+            logger.debug(
                 'Updating TimeSeriesCache for fewsnorm %s...', source.name)
             source.sync_time_series_cache(
-                locations, parameters, modules, time_steps)
+                locations, parameters, modules, time_steps, qualifier_sets)

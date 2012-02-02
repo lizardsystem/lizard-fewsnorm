@@ -4,6 +4,7 @@ from lizard_fewsnorm.models import FewsNormSource
 from lizard_fewsnorm.models import GeoLocationCache
 from lizard_fewsnorm.models import ModuleCache
 from lizard_fewsnorm.models import ParameterCache
+from lizard_fewsnorm.models import QualifierSetCache
 from lizard_fewsnorm.models import TimeStepCache
 from lizard_fewsnorm.models import TimeSeriesCache
 
@@ -27,9 +28,18 @@ class FewsNormSourceAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name", )}
 
 
+class TimeSeriesCacheAdmin(admin.ModelAdmin):
+    list_filter = ('active', )
+
+
+class GeoLocationCacheAdmin(admin.ModelAdmin):
+    list_filter = ('active', )
+
+
 admin.site.register(FewsNormSource, FewsNormSourceAdmin)
-admin.site.register(GeoLocationCache)
+admin.site.register(GeoLocationCache, GeoLocationCacheAdmin)
 admin.site.register(ModuleCache)
 admin.site.register(ParameterCache)
+admin.site.register(QualifierSetCache)
 admin.site.register(TimeStepCache)
-admin.site.register(TimeSeriesCache)
+admin.site.register(TimeSeriesCache, TimeSeriesCacheAdmin)

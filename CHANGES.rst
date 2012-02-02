@@ -5,7 +5,10 @@ Changelog of lizard-fewsnorm
 0.9 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Added QualifierSetCache.
+
+- Added 'active' to model admin screens, so you can delete inactive
+  objects easily.
 
 
 0.8 (2012-02-01)

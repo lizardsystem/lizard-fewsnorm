@@ -372,6 +372,26 @@ class TimeseriesManualEditsHistory(models.Model):
 
 # Managed models that are in the default database.
 
+class QualifierSetCacheManager(models.Manager):
+    def get_by_natural_key(self, ident):
+        return self.get(ident=ident)
+
+
+class QualifierSetCache(models.Model):
+    objects = QualifierSetCacheManager()
+
+    ident = models.CharField(max_length=64)
+
+    class Meta:
+        ordering = ('ident', )
+
+    def __unicode__(self):
+        return '%s' % self.ident
+
+    def natural_key(self):
+        return (self.ident, )
+
+
 class ParameterCacheManager(models.Manager):
     def get_by_natural_key(self, ident):
         return self.get(ident=ident)
@@ -492,6 +512,8 @@ class TimeSeriesCache(models.Model):
     parametercache = models.ForeignKey(ParameterCache)
     modulecache = models.ForeignKey(ModuleCache)
     timestepcache = models.ForeignKey(TimeStepCache)
+    qualifiersetcache = models.ForeignKey(QualifierSetCache,
+                                          blank=True, null=True)
     active = models.BooleanField(default=True)
 
     # class Meta:
@@ -622,6 +644,23 @@ class FewsNormSource(models.Model):
         return time_steps
 
     @transaction.commit_on_success
+    def sync_qualifier_set_cache(self):
+        """
+        Fill QualifierSetCache
+        """
+        qualifier_sets = {}
+        for qualifier_set in QualifierSets.objects.using(
+            self.database_name).all():
+
+            qualifier_set_cache, cr = QualifierSetCache.objects.get_or_create(
+                ident=qualifier_set.id)
+            qualifier_sets[qualifier_set_cache.ident] = qualifier_set_cache
+            if cr:
+                logger.info('Newly created qualifier set %s' %
+                            qualifier_set_cache)
+        return qualifier_sets
+
+    @transaction.commit_on_success
     def sync_location_cache(
         self, data_set=None, user_name=None):
         """
@@ -674,7 +713,8 @@ class FewsNormSource(models.Model):
         return locations
 
     def sync_time_series_cache(
-        self, locations, parameters, modules, time_steps, data_set_name=None):
+        self, locations, parameters, modules, time_steps,
+        qualifier_sets, data_set_name=None):
         """
         Synchronize the time series cache with the source.
 
@@ -690,6 +730,11 @@ class FewsNormSource(models.Model):
             time_series_cache.active = False
             time_series_cache.save()
         for single_timeserieskeys in timeserieskeys:
+            if single_timeserieskeys.qualifierset is not None:
+                qualifier_set_id = qualifier_sets[
+                    single_timeserieskeys.qualifierset.id]
+            else:
+                qualifier_set_id = None
             time_series_cache, created = TimeSeriesCache.objects.get_or_create(
                 geolocationcache=locations[
                     single_timeserieskeys.location.id],
@@ -699,12 +744,15 @@ class FewsNormSource(models.Model):
                     single_timeserieskeys.moduleinstance.id],
                 timestepcache=time_steps[
                     single_timeserieskeys.timestep.id],
+                qualifiersetcache=qualifier_set_id,
                 defaults={'active': True}
                 )
-            time_series_cache.active = True
-            time_series_cache.save()
             if created:
                 logger.info('Newly created timeseries %s' % time_series_cache)
+            else:
+                # A little bit faster than out of the if statement.
+                time_series_cache.active = True
+                time_series_cache.save()
         inactive_timeseries = TimeSeriesCache.objects.filter(
             geolocationcache__fews_norm_source=self, active=False)
         if inactive_timeseries:

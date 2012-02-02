@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.9 (unreleased)
+0.9 (2012-02-02)
 ----------------
 
 - Added QualifierSetCache.

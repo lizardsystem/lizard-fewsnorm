@@ -589,6 +589,7 @@ class FewsNormSource(models.Model):
     def source_locations(self):
         return Location.objects.using(self.database_name).all()
 
+    @transaction.commit_on_success
     def get_or_create_geoobjectgroup(self, user_name=None):
         if user_name is None:
             user_obj = User.objects.all()[0]  # Random user
@@ -597,7 +598,12 @@ class FewsNormSource(models.Model):
         group_name = 'FEWSNORM::%s' % self.database_name
         group_slug = slugify(group_name)
         geo_object_group, created = GeoObjectGroup.objects.get_or_create(
-            name=group_name, slug=group_slug, created_by=user_obj)
+            slug=group_slug,
+            defaults={'name': group_name, 'created_by': user_obj})
+        if not created:
+            geo_object_group.name = group_name
+            geo_object_group.created_by = user_obj
+            geo_object_group.save()
         if created:
             logger.info('Newly created geoobjectgroup %s' % geo_object_group)
             geo_object_group.source_log = 'FEWSNORM::%s' % self.database_name
@@ -712,6 +718,7 @@ class FewsNormSource(models.Model):
                 logger.warning('Inactive location: %s' % inactive_location)
         return locations
 
+    @transaction.commit_on_success
     def sync_time_series_cache(
         self, locations, parameters, modules, time_steps,
         qualifier_sets, data_set_name=None):

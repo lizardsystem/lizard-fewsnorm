@@ -5,7 +5,9 @@ Changelog of lizard-fewsnorm
 0.10 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Fixed sync_fewsnorm bug get_or_create.
+
+- Added transaction.commit_on_success.
 
 
 0.9 (2012-02-02)

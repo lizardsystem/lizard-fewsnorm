@@ -2,8 +2,8 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.10 (unreleased)
------------------
+0.9.1 (2012-02-07)
+------------------
 
 - Fixed sync_fewsnorm bug get_or_create.
 

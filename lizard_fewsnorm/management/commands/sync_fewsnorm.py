@@ -19,7 +19,7 @@ class Command(BaseCommand):
     """
 
     help = ("Example: bin/django sync_fewsnorm "\
-            "--source=fewsnorm1 --data_set=MyDataSet")
+            "--db_name=fewsnorm1 --data_set=MyDataSet")
 
     option_list = BaseCommand.option_list + (
         make_option('--db_name',

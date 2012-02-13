@@ -2,8 +2,8 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.10 (unreleased)
------------------
+0.9.2 (2012-02-13)
+------------------
 
 - Fixed help string in 'sync_fewsnorm' management command.
 

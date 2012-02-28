@@ -402,6 +402,10 @@ class ParameterCache(models.Model):
 
     ident = models.CharField(max_length=64)
 
+    name = models.CharField(max_length=64, null=True, blank=True)
+
+    shortname = models.CharField(max_length=64, null=True, blank=True)
+
     class Meta:
         ordering = ('ident', )
 
@@ -617,12 +621,21 @@ class FewsNormSource(models.Model):
         """
         parameters = {}
         for parameter in Parameter.objects.using(self.database_name).all():
-            #logger.debug('Get or create parameter cache %s', parameter.id)
             parameter_cache, created = ParameterCache.objects.get_or_create(
-                ident=parameter.id)
-            parameters[parameter_cache.ident] = parameter_cache
+                ident=parameter.id,
+                defaults={
+                    'name': parameter.name,
+                    'shortname': parameter.shortname,
+                }
+            )
             if created:
                 logger.info('Newly created parameter %s' % parameter_cache)
+            else:
+                parameter_cache.name = parameter.name
+                parameter_cache.shortname = parameter.shortname
+                parameter_cache.save()
+                logger.info('Updated parameter %s' % parameter_cache)
+            parameters[parameter_cache.ident] = parameter_cache
         return parameters
 
     @transaction.commit_on_success

@@ -5,7 +5,8 @@ Changelog of lizard-fewsnorm
 0.9.3 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add fields name and shortname to parameter cache and
+  adjust sync_fewsnorm management command accordingly.
 
 
 0.9.2 (2012-02-13)

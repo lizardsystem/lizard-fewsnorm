@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.9.3 (unreleased)
+0.9.3 (2012-03-01)
 ------------------
 
 - Add fields name and shortname to parameter cache and

@@ -7,6 +7,7 @@ from lizard_fewsnorm.models import ParameterCache
 from lizard_fewsnorm.models import QualifierSetCache
 from lizard_fewsnorm.models import TimeStepCache
 from lizard_fewsnorm.models import TimeSeriesCache
+from lizard_fewsnorm.models import TrackRecordCache
 
 # These models don't come from the default database.
 # from lizard_fewsnorm.models import Users
@@ -42,4 +43,5 @@ admin.site.register(ModuleCache)
 admin.site.register(ParameterCache)
 admin.site.register(QualifierSetCache)
 admin.site.register(TimeStepCache)
+admin.site.register(TrackRecordCache)
 admin.site.register(TimeSeriesCache, TimeSeriesCacheAdmin)

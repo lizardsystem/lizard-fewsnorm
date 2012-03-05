@@ -5,7 +5,12 @@ Changelog of lizard-fewsnorm
 0.9.4 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add model for track records
+
+- Add method to fewsnormsourcemodel for syncing track records
+
+- Add management command for syncing track records
+
 
 
 0.9.3 (2012-03-01)

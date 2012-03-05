@@ -565,7 +565,7 @@ class TimeSeriesCache(models.Model):
         series_set = self._series_set()
         return Event.filter_latest_before_deadline(series_set, now)[0]
 
-    def get_timeseries(self, dt_start, dt_end):
+    def get_timeseries(self, dt_start=None, dt_end=None):
         """
         Return TimeSeries dictionary.
 
@@ -573,6 +573,28 @@ class TimeSeriesCache(models.Model):
         """
         series_set = self._series_set()
         return timeseries.TimeSeries.as_dict(series_set, dt_start, dt_end)
+
+class TrackRecordCache(GeoObject):
+    """
+    Hold results from complex query on fewsnorm database
+    """
+    objects = FilteredGeoManager()
+
+    data_set = models.ForeignKey(DataSet, null=True, blank=True)
+    fews_norm_source = models.ForeignKey('FewsNormSource')
+
+    parameter = models.ForeignKey(ParameterCache, null=True, blank=True)
+    location = models.ForeignKey(GeoLocationCache, null=True, blank=True)
+    module = models.ForeignKey(ModuleCache, null=True, blank=True)
+
+    datetime = models.DateTimeField()
+    value = models.FloatField()
+
+    class Meta:
+        ordering = ['datetime']
+
+    def __unicode__(self):
+        return '%s - %s' % (self.location, self.parameter)
 
 
 class FewsNormSource(models.Model):
@@ -781,6 +803,82 @@ class FewsNormSource(models.Model):
             for inactive_single_timeseries in inactive_timeseries:
                 logger.warning('Inactive timeseries: %s' %
                                inactive_single_timeseries)
+    
+    # @transaction.commit_on_success
+    def sync_track_record_cache(self, data_set=None):
+        """
+        Synchronize trackrecords
+        """
+        TRACKRECORD_PARAMETERS = ('BodemP.kritisch', )
+        TRACKRECORD_COORDINATES = ('Xpos', 'Ypos')
+        TRACKRECORD_GEOOBJECTGROUP = 'TrackRecordCache'
+
+        # Get the first superuser for the geoobject group
+        geo_object_group_user = User.objects.filter(is_superuser=True)[0]
+
+        geo_object_group = GeoObjectGroup.objects.get_or_create(
+            name=TRACKRECORD_GEOOBJECTGROUP,
+            slug=slugify(TRACKRECORD_GEOOBJECTGROUP),
+            defaults = {'created_by': geo_object_group_user}
+        )[0]
+
+        parametercaches = [ParameterCache.objects.get(ident=trp)
+                           for trp in TRACKRECORD_PARAMETERS]
+        xpos_cache, ypos_cache = [ParameterCache.objects.get(ident=trp)
+                                  for trp in TRACKRECORD_COORDINATES]
+
+        for p in parametercaches:
+            geolocationcaches = GeoLocationCache.objects.filter(parameter=p)
+
+            for g in geolocationcaches:
+                # Collect value, xpos and ypos events at this location
+                value_events = TimeSeriesCache.objects.get(
+                    geolocationcache=g,
+                    parametercache=p,
+                ).get_timeseries().values()[0].get_events()
+                xpos_events = TimeSeriesCache.objects.get(
+                    geolocationcache=g,
+                    parametercache=xpos_cache,
+                ).get_timeseries().values()[0].get_events()
+                ypos_events = TimeSeriesCache.objects.get(
+                    geolocationcache=g,
+                    parametercache=ypos_cache,
+                ).get_timeseries().values()[0].get_events()
+
+                # Some dicts for easy matching of events by date
+                xpos_events_dict = dict([(str(e[0]), e)
+                                          for e in xpos_events])
+                ypos_events_dict = dict([(str(e[0]), e)
+                                          for e in ypos_events])
+
+                for value_event in value_events:
+                    # Note we check if coordinates are present for a value,
+                    # but not if values are present for each coordinate.
+                    datestr = str(value_event[0])
+                    if (datestr in xpos_events_dict and
+                        datestr in ypos_events_dict):
+                        x_rd = xpos_events_dict[datestr][1][0]
+                        y_rd = ypos_events_dict[datestr][1][0]
+                        x_wgs84, y_wgs84 = rd_to_wgs84(x_rd, y_rd)
+                        geometry = GEOSGeometry(
+                            Point(x_wgs84, y_wgs84),
+                            srid=4326,
+                        )
+
+                        track_record_cache_kwargs = {
+                            'data_set': data_set,
+                            'fews_norm_source': self,
+                            'parameter': p,
+                            'location': g,
+                            'module': None,
+                            'geo_object_group': geo_object_group,
+                            'geometry': geometry,
+                            'datetime': value_event[0],
+                            'value': value_event[1][0],
+                        }
+                        TrackRecordCache.objects.get_or_create(
+                            **track_record_cache_kwargs)
+        return None
 
     def __unicode__(self):
         return '%s' % (self.name)

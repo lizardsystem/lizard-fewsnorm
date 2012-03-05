@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.9.4 (unreleased)
+0.9.4 (2012-03-05)
 ------------------
 
 - Add model for track records

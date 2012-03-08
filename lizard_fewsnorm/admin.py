@@ -30,7 +30,10 @@ class FewsNormSourceAdmin(admin.ModelAdmin):
 
 
 class TimeSeriesCacheAdmin(admin.ModelAdmin):
-    list_filter = ('active', )
+    list_filter = ('active', 'geolocationcache',
+                   'parametercache', 'modulecache', 'timestepcache', )
+    list_display = ('__unicode__', 'active', 'geolocationcache',
+                    'parametercache', 'modulecache', 'timestepcache', )
 
 
 class GeoLocationCacheAdmin(admin.ModelAdmin):

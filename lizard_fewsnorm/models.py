@@ -574,6 +574,7 @@ class TimeSeriesCache(models.Model):
         series_set = self._series_set()
         return timeseries.TimeSeries.as_dict(series_set, dt_start, dt_end)
 
+
 class TrackRecordCache(GeoObject):
     """
     Hold results from complex query on fewsnorm database
@@ -803,7 +804,7 @@ class FewsNormSource(models.Model):
             for inactive_single_timeseries in inactive_timeseries:
                 logger.warning('Inactive timeseries: %s' %
                                inactive_single_timeseries)
-    
+
     # @transaction.commit_on_success
     def sync_track_record_cache(self, data_set=None):
         """

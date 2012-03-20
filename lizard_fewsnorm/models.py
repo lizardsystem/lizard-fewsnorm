@@ -85,6 +85,9 @@ class Location(models.Model):
     relationblocationid = models.CharField(max_length=64)
     attributea = models.CharField(max_length=64)
     attributeb = models.FloatField()
+    # Temporary related locations for "waterhoogte" and "chloride"
+    # l_wathte = models.CharField(max_length=64)
+    # l_chlor = models.CharField(max_length=64)
 
     class Meta:
         db_table = SCHEMA_PREFIX + u'locations'

@@ -343,14 +343,14 @@ class TimeseriesComments(models.Model):
                                   db_column='serieskey',
                                   blank=True, null=True)
     datetime = models.DateTimeField(primary_key=True)
-    comments = models.CharField(max_length=64)
+    comment = models.CharField(max_length=64)
 
     class Meta:
         db_table = SCHEMA_PREFIX + u'timeseriescomments'
         managed = False
 
     def __unicode__(self):
-        return u'%s' % self.comments
+        return u'%s' % self.comment
 
 
 class TimeseriesManualEditsHistory(models.Model):

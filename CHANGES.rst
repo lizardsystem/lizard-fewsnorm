@@ -5,7 +5,7 @@ Changelog of lizard-fewsnorm
 0.11 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Renamed TimeseriesComments.comments to comment.
 
 
 0.10 (2012-03-22)

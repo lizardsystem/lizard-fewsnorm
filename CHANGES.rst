@@ -2,8 +2,8 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.9.5 (unreleased)
-------------------
+0.10 (2012-03-22)
+-----------------
 
 - Added fields to TimeSeriesCache admin screen.
 

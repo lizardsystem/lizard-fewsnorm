@@ -7,6 +7,12 @@ Changelog of lizard-fewsnorm
 
 - Added fields to TimeSeriesCache admin screen.
 
+- Removed locations columns (Deltares removed these columns):
+    #relationalocationid = models.CharField(max_length=64)
+    #relationblocationid = models.CharField(max_length=64)
+    #attributea = models.CharField(max_length=64)
+    #attributeb = models.FloatField()
+
 
 0.9.4 (2012-03-05)
 ------------------

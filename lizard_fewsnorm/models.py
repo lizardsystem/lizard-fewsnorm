@@ -352,6 +352,21 @@ class TimeseriesComments(models.Model):
     def __unicode__(self):
         return u'%s' % self.comment
 
+    @classmethod
+    def filter_comment(cls, series, datetime):
+        """
+        Return comment object for given series and datetime.
+
+        Crashes if nothing found.
+
+        Comparable with Event.filter_latest_before_deadline
+        """
+        location = GeoLocationCache.objects.get(
+            ident=series.location.id)
+        db_name = location.fews_norm_source.database_name
+        return TimeseriesComments.objects.using(
+            db_name).get(serieskey=series, datetime=datetime)
+
 
 class TimeseriesManualEditsHistory(models.Model):
     serieskey = models.ForeignKey(Series,
@@ -559,14 +574,28 @@ class TimeSeriesCache(models.Model):
                  'mod_id': str(self.modulecache.ident)}))
         return Series.objects.raw(series_query).using(db_name)
 
-    def get_latest_event(self, now=None):
+    def get_latest_event(self, now=None, with_comments=False):
         """
         Return latest event for this timeseries.
+
+        TODO: improve with_comments option.
         """
         if now is None:
             now = datetime.datetime.now()
         series_set = self._series_set()
-        return Event.filter_latest_before_deadline(series_set, now)[0]
+        event = Event.filter_latest_before_deadline(
+            series_set, now)[0]
+        if with_comments:
+            # event.comment = 'test comment'
+            # assume the serie_set is not empty!
+            try:
+                comment = TimeseriesComments.filter_comment(
+                    series_set[0], event.timestamp)
+                event.comment = comment.comment
+            except TimeseriesComments.DoesNotExist:
+                # No comment found
+                pass
+        return event
 
     def get_timeseries(self, dt_start=None, dt_end=None):
         """

@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.12 (unreleased)
+0.12 (2012-03-28)
 -----------------
 
 - Added with_comments option in TimeSeriesCache.get_latest_event.

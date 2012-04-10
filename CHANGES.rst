@@ -5,7 +5,9 @@ Changelog of lizard-fewsnorm
 0.13 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Added support for different schemas (experimental).
+
+- Updated sync_fewsnorm, still experimental.
 
 
 0.12 (2012-03-28)

@@ -65,7 +65,27 @@ class ParameterGroups(models.Model):
         return u'%s' % self.id
 
 
-class Location(models.Model):
+class FlexibleSchemaModel(object):
+    """
+    Create altered model using your own schemaname.
+
+    Meta.db_table must be defined when using this class.
+    """
+
+    @classmethod
+    def get_django_model(cls, schema_prefix=''):
+        """
+        Create a django model using a custom schemaname.
+        """
+        if schema_prefix:
+            cls._meta.db_table = schema_prefix + u'"."' + cls._meta.db_table
+        return cls
+
+
+class Location(models.Model, FlexibleSchemaModel):
+    """
+    Fewsnorm Location.
+    """
     locationkey = models.IntegerField(primary_key=True,
                                       db_column='locationkey')
     id = models.CharField(unique=True, max_length=64)
@@ -90,7 +110,7 @@ class Location(models.Model):
     # l_chlor = models.CharField(max_length=64)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'locations'
+        db_table = u'locations'
         managed = False
 
     def __unicode__(self):
@@ -105,7 +125,7 @@ class Location(models.Model):
 #             name += schema_prefix
 #             return models.base.ModelBase.__new__(cls, name, bases, attrs)
 
-class Parameter(models.Model):
+class Parameter(models.Model, FlexibleSchemaModel):
     parameterkey = models.IntegerField(primary_key=True,
                                        db_column='parameterkey')
     groupkey = models.ForeignKey(ParameterGroups,
@@ -140,7 +160,7 @@ class Qualifiers(models.Model):
         return u'%s' % self.id
 
 
-class QualifierSets(models.Model):
+class QualifierSets(models.Model, FlexibleSchemaModel):
     qualifiersetkey = models.IntegerField(primary_key=True,
                                           db_column='qualifiersetkey')
     id = models.CharField(unique=True, max_length=64)
@@ -168,7 +188,7 @@ class QualifierSets(models.Model):
         return u'%s' % self.id
 
 
-class ModuleInstances(models.Model):
+class ModuleInstances(models.Model, FlexibleSchemaModel):
     moduleinstancekey = models.IntegerField(primary_key=True,
                                             db_column='moduleinstancekey')
     id = models.CharField(unique=True, max_length=64)
@@ -183,7 +203,7 @@ class ModuleInstances(models.Model):
         return u'%s' % self.id
 
 
-class Timesteps(models.Model):
+class Timesteps(models.Model, FlexibleSchemaModel):
     timestepkey = models.IntegerField(primary_key=True,
                                       db_column='timestepkey')
     id = models.CharField(unique=True, max_length=64)
@@ -213,7 +233,7 @@ class AggregationPeriods(models.Model):
         return u'%s' % self.id
 
 
-class Series(models.Model):
+class Series(models.Model, FlexibleSchemaModel):
     serieskey = models.IntegerField(primary_key=True,
                                     db_column='serieskey')
     location = models.ForeignKey(Location,
@@ -236,6 +256,15 @@ class Series(models.Model):
     class Meta:
         db_table = SCHEMA_PREFIX + u'timeserieskeys'
         managed = False
+
+    def hash(self):
+        if self.qualifierset is not None:
+            qualifier_set_id = self.qualifierset.id
+        else:
+            qualifier_set_id = None
+        return '%s::%s::%s::%s::%s' % (
+            self.location.id, self.parameter.id, self.moduleinstance.id,
+            self.timestep.id, qualifier_set_id)
 
     def __unicode__(self):
         return u'%s %s %s %s' % (
@@ -302,7 +331,8 @@ class Event(composite.CompositePKModel):
             self.flag)
 
     @classmethod
-    def filter_latest_before_deadline(cls, series_set, deadline):
+    def filter_latest_before_deadline(
+        cls, series_set, deadline, schema_prefix=''):
         """filter events matching series_set
 
         `series_set` is a QuerySet holding Series.
@@ -322,6 +352,10 @@ class Event(composite.CompositePKModel):
         series_set__pk = ','.join(tuple(str(s.pk) for s in series_set))
         deadline__iso = deadline.isoformat()
 
+        if schema_prefix:
+            schemaprefix_ = schema_prefix + '"."'
+        else:
+            schemaprefix_ = ''
         ## execute the query.
         return cls.objects.raw("""\
 SELECT e.* FROM \"%(schema_prefix)stimeseriesvaluesandflags\" e
@@ -332,7 +366,7 @@ SELECT e.* FROM \"%(schema_prefix)stimeseriesvaluesandflags\" e
               GROUP BY serieskey) latest
   ON e.serieskey = latest.serieskey
   AND e.datetime = latest.datetime""" % {
-                'schema_prefix': SCHEMA_PREFIX,
+                'schema_prefix': schema_prefix_,
                 'serieskey': series_set__pk,
                 'deadline': deadline__iso}).using(db_name)
 
@@ -353,7 +387,7 @@ class TimeseriesComments(models.Model):
         return u'%s' % self.comment
 
     @classmethod
-    def filter_comment(cls, series, datetime):
+    def filter_comment(cls, series, datetime, schema_prefix=''):
         """
         Return comment object for given series and datetime.
 
@@ -364,7 +398,8 @@ class TimeseriesComments(models.Model):
         location = GeoLocationCache.objects.get(
             ident=series.location.id)
         db_name = location.fews_norm_source.database_name
-        return TimeseriesComments.objects.using(
+        return TimeseriesComments.get_django_object(
+            schema_prefix=schema_prefix).objects.using(
             db_name).get(serieskey=series, datetime=datetime)
 
 
@@ -548,6 +583,15 @@ class TimeSeriesCache(models.Model):
             self.parametercache.ident,
             self.id)
 
+    def hash(self):
+        if self.qualifiersetcache is not None:
+            qualifier_set_id = self.qualifiersetcache.id
+        else:
+            qualifier_set_id = None
+        return '%s::%s::%s::%s::%s' % (
+            self.geolocationcache.ident, self.parametercache.ident,
+            self.modulecache.ident, self.timestepcache.ident, qualifier_set_id)
+
     def api_url(self):
         return reverse('lizard_fewsnorm_api_timeseries_detail',
                        kwargs={'id': self.id})
@@ -633,6 +677,14 @@ class TrackRecordCache(GeoObject):
 class FewsNormSource(models.Model):
     """
     Define a source database for fews norm.
+
+    We're using fewsnorm database models:
+    - Location
+    - Parameter
+    - ModuleInstances
+    - Timesteps
+    - QualifierSets
+    - Series
     """
     name = models.CharField(max_length=128)
     slug = models.SlugField(unique=True)
@@ -646,7 +698,8 @@ class FewsNormSource(models.Model):
     #     self.geolocationcache_set.all().delete()
 
     def source_locations(self):
-        return Location.objects.using(self.database_name).all()
+        return Location.get_django_model(
+            self.database_schema_name).objects.using(self.database_name).all()
 
     @transaction.commit_on_success
     def get_or_create_geoobjectgroup(self, user_name=None):
@@ -675,7 +728,11 @@ class FewsNormSource(models.Model):
         Fill ParameterCache
         """
         parameters = {}
-        for parameter in Parameter.objects.using(self.database_name).all():
+        no_touched = 0
+        no_created = 0
+        for parameter in Parameter.get_django_model(
+            self.database_schema_name).objects.using(self.database_name).all():
+
             parameter_cache, created = ParameterCache.objects.get_or_create(
                 ident=parameter.id,
                 defaults={
@@ -685,12 +742,16 @@ class FewsNormSource(models.Model):
             )
             if created:
                 logger.info('Newly created parameter %s' % parameter_cache)
+                no_created += 1
             else:
                 parameter_cache.name = parameter.name
                 parameter_cache.shortname = parameter.shortname
                 parameter_cache.save()
-                logger.info('Updated parameter %s' % parameter_cache)
+                # logger.debug('Updated/touched parameter %s' % parameter_cache)
+                no_touched += 1
             parameters[parameter_cache.ident] = parameter_cache
+        logger.info('No of parameters created: %d' % no_created)
+        logger.info('No of parameters updated/touched: %d' % no_touched)
         return parameters
 
     @transaction.commit_on_success
@@ -699,7 +760,9 @@ class FewsNormSource(models.Model):
         Fill ModuleCache.
         """
         modules = {}
-        for module in ModuleInstances.objects.using(self.database_name).all():
+        for module in ModuleInstances.get_django_model(
+            self.database_schema_name).objects.using(self.database_name).all():
+
             module_cache, _ = ModuleCache.objects.get_or_create(
                 ident=module.id)
             modules[module_cache.ident] = module_cache
@@ -711,7 +774,9 @@ class FewsNormSource(models.Model):
         Fill TimeStepCache.
         """
         time_steps = {}
-        for time_step in Timesteps.objects.using(self.database_name).all():
+        for time_step in Timesteps.get_django_model(
+            self.database_schema_name).objects.using(self.database_name).all():
+
             time_step_cache, _ = TimeStepCache.objects.get_or_create(
                 ident=time_step.id)
             time_steps[time_step_cache.ident] = time_step_cache
@@ -723,7 +788,8 @@ class FewsNormSource(models.Model):
         Fill QualifierSetCache
         """
         qualifier_sets = {}
-        for qualifier_set in QualifierSets.objects.using(
+        for qualifier_set in QualifierSets.get_django_model(
+            self.database_schema_name).objects.using(
             self.database_name).all():
 
             qualifier_set_cache, cr = QualifierSetCache.objects.get_or_create(
@@ -746,45 +812,93 @@ class FewsNormSource(models.Model):
         parameters and modules are dicts with ParameterCache and
         ModuleCache. Keys are their idents.
         """
+        logger.debug('Reading existing locations from source...')
         source_locations = self.source_locations()
         geo_object_group = self.get_or_create_geoobjectgroup(user_name)
-        locations = {}
-        for geo_location_cache in GeoLocationCache.objects.filter(
-            fews_norm_source=self):
 
-            geo_location_cache.active = False
-            geo_location_cache.save()
+        logger.debug('Reading current locations cache...')
+        locations = {}
+        for glc in GeoLocationCache.objects.filter(fews_norm_source=self):
+            glc.active = False
+            locations[glc.ident] = glc
+
+        no_existing = 0
+        no_created = 0
+        no_nonactive = 0
+        logger.debug('Checking all locations...')
         for location in source_locations:
-            # logger.debug('processing location.id: %s' % location.id)
+            new_ident = location.id[:80]
+            if new_ident in locations:
+                # Update existing
+                no_existing += 1
+                current_location = locations[new_ident]
+            else:
+                # New
+                no_created += 1
+                current_location = GeoLocationCache(ident=new_ident)
+            # (Over)write params
             wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
-            params = {
-                'data_set': data_set,
-                'fews_norm_source': self,
-                'name': '%s' % location.name,
-                'shortname': '%s' % location.shortname,
-                'icon': '%s' % location.icon,
-                'tooltip': '%s' % location.tooltip,
-                'geo_object_group': geo_object_group,
-                'geometry': GEOSGeometry(
-                    Point(wgs84_x, wgs84_y), srid=4326),
-                'active': True}
-            geo_location_cache, cr = GeoLocationCache.objects.get_or_create(
-                ident=location.id[:80], defaults=params)
-            if not cr:
-                for k, v in params.items():
-                    geo_location_cache.__setattr__(k, v)
-                geo_location_cache.save()
-            if cr:
-                logger.info('Newly created location %s' % geo_location_cache)
-            locations[geo_location_cache.ident] = geo_location_cache
-        inactive_locations = GeoLocationCache.objects.filter(
-            fews_norm_source=self, active=False)
-        if inactive_locations:
-            logger.warning('Warning: there are inactive locations for '
-                           'fews_norm_source %s:' % self)
-            for inactive_location in inactive_locations:
-                logger.warning('Inactive location: %s' % inactive_location)
+            current_location.data_set = data_set
+            current_location.fews_norm_source = self
+            current_location.name = '%s' % location.name
+            current_location.shortname = '%s' % location.shortname
+            current_location.icon = '%s' % location.icon
+            current_location.tooltip = '%s' % location.tooltip
+            current_location.geo_object_group = geo_object_group
+            current_location.geometry = GEOSGeometry(
+                Point(wgs84_x, wgs84_y), srid=4326)
+            current_location.active = True
+            locations[new_ident] = current_location
+
+        # Save locations
+        logger.debug('Saving %d objects...' % len(locations))
+        for location in locations.values():
+            if not location.active:
+                no_nonactive += 1
+                logger.warning('Inactive location: %s' % location)
+            location.save()
+
+        logger.info('Newly created locations: %d' % no_created)
+        logger.info('Updated locations: %d' % no_existing)
+        logger.info('Non-active locations: %d' % no_nonactive)
         return locations
+
+        # for geo_location_cache in GeoLocationCache.objects.filter(
+        #     fews_norm_source=self):
+
+        #     geo_location_cache.active = False
+        #     geo_location_cache.save()
+        # for location in source_locations:
+        #     # logger.debug('processing location.id: %s' % location.id)
+        #     wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
+        #     params = {
+        #         'data_set': data_set,
+        #         'fews_norm_source': self,
+        #         'name': '%s' % location.name,
+        #         'shortname': '%s' % location.shortname,
+        #         'icon': '%s' % location.icon,
+        #         'tooltip': '%s' % location.tooltip,
+        #         'geo_object_group': geo_object_group,
+        #         'geometry': GEOSGeometry(
+        #             Point(wgs84_x, wgs84_y), srid=4326),
+        #         'active': True}
+        #     geo_location_cache, cr = GeoLocationCache.objects.get_or_create(
+        #         ident=location.id[:80], defaults=params)
+        #     if not cr:
+        #         for k, v in params.items():
+        #             geo_location_cache.__setattr__(k, v)
+        #         geo_location_cache.save()
+        #     if cr:
+        #         logger.info('Newly created location %s' % geo_location_cache)
+        #     locations[geo_location_cache.ident] = geo_location_cache
+        # inactive_locations = GeoLocationCache.objects.filter(
+        #     fews_norm_source=self, active=False)
+        # if inactive_locations:
+        #     logger.warning('Warning: there are inactive locations for '
+        #                    'fews_norm_source %s:' % self)
+        #     for inactive_location in inactive_locations:
+        #         logger.warning('Inactive location: %s' % inactive_location)
+        # return locations
 
     @transaction.commit_on_success
     def sync_time_series_cache(
@@ -798,44 +912,108 @@ class FewsNormSource(models.Model):
 
         Note that active timeseries CAN refer to an inactive location.
         """
-        timeserieskeys = Series.objects.using(self.database_name).all()
-        for time_series_cache in TimeSeriesCache.objects.filter(
-            geolocationcache__fews_norm_source=self):
 
-            time_series_cache.active = False
+        # Collect new series
+        logger.debug('Reading existing series from source...')
+        series = Series.get_django_model(
+            self.database_schema_name).objects.select_related().using(
+            self.database_name).all()
+        # series_dict = dict([(single_series.hash(), single_series) for
+        #                     single_series in series])
+
+        # Current cache: fist set all to non-active
+        logger.debug('Reading existing series cache...')
+        time_series_cache_dict = {}
+        for single_time_series_cache in TimeSeriesCache.objects.select_related().filter(
+            geolocationcache__fews_norm_source=self):
+            single_time_series_cache.active = False
+            time_series_cache_dict[
+                single_time_series_cache.hash()] = single_time_series_cache
+
+        no_existing = 0
+        no_created = 0
+        no_nonactive = 0
+        logger.debug('Checking all series...')
+        for single_series in series:
+            series_hash = single_series.hash()
+            if series_hash in time_series_cache_dict:
+                # Update existing
+                no_existing += 1
+                current_time_series = time_series_cache_dict[series_hash]
+            else:
+                # New
+                no_created += 1
+                if single_series.qualifierset is not None:
+                    qualifier_set_id = qualifier_sets[
+                        single_series.qualifierset.id]
+                else:
+                    qualifier_set_id = None
+                current_time_series = TimeSeriesCache(
+                    geolocationcache=locations[
+                        single_series.location.id],
+                    parametercache=parameters[
+                        single_series.parameter.id],
+                    modulecache=modules[
+                        single_series.moduleinstance.id],
+                    timestepcache=time_steps[
+                        single_series.timestep.id],
+                    qualifiersetcache=qualifier_set_id
+                    )
+                logger.debug('New timeseries: %s' % current_time_series)
+            current_time_series.active = True
+            time_series_cache_dict[series_hash] = current_time_series
+
+        # Save timeseries
+        logger.debug('Saving %d objects...' % len(time_series_cache_dict))
+        for time_series_cache in time_series_cache_dict.values():
+            if not time_series_cache.active:
+                no_nonactive += 1
+                logger.warning('Inactive timeseries: %s' % time_series_cache)
             time_series_cache.save()
-        for single_timeserieskeys in timeserieskeys:
-            if single_timeserieskeys.qualifierset is not None:
-                qualifier_set_id = qualifier_sets[
-                    single_timeserieskeys.qualifierset.id]
-            else:
-                qualifier_set_id = None
-            time_series_cache, created = TimeSeriesCache.objects.get_or_create(
-                geolocationcache=locations[
-                    single_timeserieskeys.location.id],
-                parametercache=parameters[
-                    single_timeserieskeys.parameter.id],
-                modulecache=modules[
-                    single_timeserieskeys.moduleinstance.id],
-                timestepcache=time_steps[
-                    single_timeserieskeys.timestep.id],
-                qualifiersetcache=qualifier_set_id,
-                defaults={'active': True}
-                )
-            if created:
-                logger.info('Newly created timeseries %s' % time_series_cache)
-            else:
-                # A little bit faster than out of the if statement.
-                time_series_cache.active = True
-                time_series_cache.save()
-        inactive_timeseries = TimeSeriesCache.objects.filter(
-            geolocationcache__fews_norm_source=self, active=False)
-        if inactive_timeseries:
-            logger.warning('Warning: there are inactive timeseries for '
-                           'fews_norm_source %s:' % self)
-            for inactive_single_timeseries in inactive_timeseries:
-                logger.warning('Inactive timeseries: %s' %
-                               inactive_single_timeseries)
+
+        logger.info('Newly created locations: %d' % no_created)
+        logger.info('Updated locations: %d' % no_existing)
+        logger.info('Non-active locations: %d' % no_nonactive)
+
+
+        # for time_series_cache in TimeSeriesCache.objects.filter(
+        #     geolocationcache__fews_norm_source=self):
+
+        #     time_series_cache.active = False
+        #     time_series_cache.save()
+
+        # for single_series in series:
+        #     if single_series.qualifierset is not None:
+        #         qualifier_set_id = qualifier_sets[
+        #             single_series.qualifierset.id]
+        #     else:
+        #         qualifier_set_id = None
+        #     time_series_cache, created = TimeSeriesCache.objects.get_or_create(
+        #         geolocationcache=locations[
+        #             single_series.location.id],
+        #         parametercache=parameters[
+        #             single_series.parameter.id],
+        #         modulecache=modules[
+        #             single_series.moduleinstance.id],
+        #         timestepcache=time_steps[
+        #             single_series.timestep.id],
+        #         qualifiersetcache=qualifier_set_id,
+        #         defaults={'active': True}
+        #         )
+        #     if created:
+        #         logger.info('Newly created timeseries %s' % time_series_cache)
+        #     else:
+        #         # A little bit faster than out of the if statement.
+        #         time_series_cache.active = True
+        #         time_series_cache.save()
+        # inactive_timeseries = TimeSeriesCache.objects.filter(
+        #     geolocationcache__fews_norm_source=self, active=False)
+        # if inactive_timeseries:
+        #     logger.warning('Warning: there are inactive timeseries for '
+        #                    'fews_norm_source %s:' % self)
+        #     for inactive_single_timeseries in inactive_timeseries:
+        #         logger.warning('Inactive timeseries: %s' %
+        #                        inactive_single_timeseries)
 
     # @transaction.commit_on_success
     def sync_track_record_cache(self, data_set=None):

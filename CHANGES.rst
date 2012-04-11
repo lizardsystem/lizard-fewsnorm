@@ -7,7 +7,8 @@ Changelog of lizard-fewsnorm
 
 - Added support for different schemas (experimental).
 
-- Updated sync_fewsnorm, still experimental.
+- Updated sync_fewsnorm, memory usage and performance is now
+  acceptable for 300k timeseries (test set for now).
 
 
 0.12 (2012-03-28)

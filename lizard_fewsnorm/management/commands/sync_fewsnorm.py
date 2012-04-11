@@ -70,6 +70,8 @@ class Command(BaseCommand):
             logger.debug(
                 'Updating GeoLocationCache for fewsnorm %s...', source.name)
             locations = source.sync_location_cache(data_set)
+            # from lizard_fewsnorm.models import GeoLocationCache
+            # locations = dict([(l.ident, l) for l in GeoLocationCache.objects.filter(fews_norm_source=source)])
 
             logger.debug(
                 'Updating QualifierSetCache for fewsnorm %s...', source.name)

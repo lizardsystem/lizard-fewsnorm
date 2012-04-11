@@ -67,9 +67,13 @@ class ParameterGroups(models.Model):
 
 class FlexibleSchemaModel(object):
     """
+    TODO: this doesn't work correctly. Replace all use with raw sqls
+
     Create altered model using your own schemaname.
 
-    Meta.db_table must be defined when using this class.
+    Meta.db_table and schema_prefix must be defined when using this
+    class.
+
     """
 
     @classmethod
@@ -77,8 +81,10 @@ class FlexibleSchemaModel(object):
         """
         Create a django model using a custom schemaname.
         """
-        if schema_prefix:
+        logger.debug('model db_table %s' % cls._meta.db_table)
+        if schema_prefix and '.' not in cls._meta.db_table:
             cls._meta.db_table = schema_prefix + u'"."' + cls._meta.db_table
+            logger.debug('Added db_table %s', cls._meta.db_table)
         return cls
 
 
@@ -234,37 +240,44 @@ class AggregationPeriods(models.Model):
 
 
 class Series(models.Model, FlexibleSchemaModel):
+    """
+    Due to difficulties in different schemas and databases:
+
+    Use from_raw.
+    """
     serieskey = models.IntegerField(primary_key=True,
                                     db_column='serieskey')
-    location = models.ForeignKey(Location,
-                                 db_column='locationkey')
-    parameter = models.ForeignKey(Parameter,
-                                  db_column='parameterkey')
-    qualifierset = models.ForeignKey(QualifierSets,
-                                        db_column='qualifiersetkey',
-                                        blank=True, null=True)
-    moduleinstance = models.ForeignKey(ModuleInstances,
-                                       db_column='moduleinstancekey',
-                                       blank=True, null=True)
-    timestep = models.ForeignKey(Timesteps,
-                                 db_column='timestepkey',
-                                 blank=True, null=True)
-    aggregationperiod = models.ForeignKey(AggregationPeriods,
-                                          db_column='aggregationperiodkey',
-                                          blank=True, null=True)
+    location = models.CharField(max_length=64)
+    parameter = models.CharField(max_length=64)
+    qualifierset = models.CharField(max_length=64, blank=True, null=True)
+    moduleinstance = models.CharField(max_length=64, blank=True, null=True)
+    timestep = models.CharField(max_length=64, blank=True, null=True)
+    aggregationperiod = models.CharField(max_length=64, blank=True, null=True)
+    # location = models.ForeignKey(Location,
+    #                              db_column='locationkey')
+    # parameter = models.ForeignKey(Parameter,
+    #                               db_column='parameterkey')
+    # qualifierset = models.ForeignKey(QualifierSets,
+    #                                     db_column='qualifiersetkey',
+    #                                     blank=True, null=True)
+    # moduleinstance = models.ForeignKey(ModuleInstances,
+    #                                    db_column='moduleinstancekey',
+    #                                    blank=True, null=True)
+    # timestep = models.ForeignKey(Timesteps,
+    #                              db_column='timestepkey',
+    #                              blank=True, null=True)
+    # aggregationperiod = models.ForeignKey(AggregationPeriods,
+    #                                       db_column='aggregationperiodkey',
+    #                                       blank=True, null=True)
 
     class Meta:
         db_table = SCHEMA_PREFIX + u'timeserieskeys'
         managed = False
 
     def hash(self):
-        if self.qualifierset is not None:
-            qualifier_set_id = self.qualifierset.id
-        else:
-            qualifier_set_id = None
         return '%s::%s::%s::%s::%s' % (
-            self.location.id, self.parameter.id, self.moduleinstance.id,
-            self.timestep.id, qualifier_set_id)
+            self.location, self.parameter, self.moduleinstance,
+            self.timestep, self.qualifierset)
 
     def __unicode__(self):
         return u'%s %s %s %s' % (
@@ -272,6 +285,48 @@ class Series(models.Model, FlexibleSchemaModel):
             self.parameter,
             self.qualifierset,
             self.moduleinstance)
+
+    @classmethod
+    def from_raw(cls, schema_prefix=''):
+        return cls.objects.raw("""
+SELECT serieskey,
+       loc.id as location,
+       par.id as parameter,
+       qua.id as qualifierset,
+       mod.id as moduleinstance,
+       tst.id as timestep ,
+       agg.id as aggregationperiod
+FROM
+       "%(schema_prefix)s"."timeserieskeys" as ts
+INNER JOIN "%(schema_prefix)s"."locations" as loc ON (ts.locationkey = loc.locationkey)
+INNER JOIN "%(schema_prefix)s"."parameters" as par ON (ts.parameterkey = par.parameterkey)
+LEFT OUTER JOIN "%(schema_prefix)s"."qualifiersets" as qua ON (ts.qualifiersetkey = qua.qualifiersetkey)
+INNER JOIN "%(schema_prefix)s"."moduleinstances" as mod ON (ts.moduleinstancekey = mod.moduleinstancekey)
+INNER JOIN "%(schema_prefix)s"."timesteps" as tst ON (ts.timestepkey = tst.timestepkey)
+LEFT OUTER JOIN "%(schema_prefix)s"."aggregationperiods" as agg ON (ts.aggregationperiodkey = agg.aggregationperiodkey)
+""" % {'schema_prefix': schema_prefix})
+
+    # @classmethod
+    # def get_django_model(cls, schema_prefix):
+    #     model = super(Series, cls).get_django_model(schema_prefix=schema_prefix)
+    #     model.location = models.ForeignKey(
+    #         Location.get_django_model(schema_prefix=schema_prefix),
+    #         db_column='locationkey')
+    #     # model.parameter = models.ForeignKey(
+    #     #     Parameter.get_django_model(schema_prefix=schema_prefix),
+    #     #     db_column='parameterkey')
+    #     # model.qualifierset = models.ForeignKey(
+    #     #     QualifierSets.get_django_model(schema_prefix=schema_prefix),
+    #     #     db_column='qualifiersetkey')
+    #     # model.moduleinstance = models.ForeignKey(
+    #     #     ModuleInstances.get_django_model(schema_prefix=schema_prefix),
+    #     #     db_column='moduleinstancekey',
+    #     #     blank=True, null=True)
+    #     # model.timestep = models.ForeignKey(
+    #     #     Timesteps.get_django_model(schema_prefix=schema_prefix),
+    #     #     db_column='timestepkey',
+    #     #     blank=True, null=True)
+    #     return model
 
 #     @classmethod
 #     def from_lppairs(cls, lppairs):
@@ -650,6 +705,72 @@ class TimeSeriesCache(models.Model):
         series_set = self._series_set()
         return timeseries.TimeSeries.as_dict(series_set, dt_start, dt_end)
 
+    @classmethod
+    def save_raw_dict(cls, timeseries):
+        """
+        Use this to save a batch of timeseries.
+
+        Timeseries are stored as dictionaries as when using .values() function.
+
+        You must add an attribute 'new' to each timeseries to
+        determine create or update.
+        """
+        # Slow version
+        # no_saved = 0
+        # no_nonactive = 0
+        # logger.debug('Saving %d objects...' % len(timeseries))
+        # for single_timeseries in timeseries:
+        #     if not single_timeseries.active:
+        #         no_nonactive += 1
+        #         logger.warning('Inactive timeseries: %s' % single_timeseries)
+        #     single_timeseries.save()
+        #     no_saved += 1
+        #     if no_saved % 100 == 0:
+        #         logger.debug('Saved %d timeseries' % no_saved)
+        # return no_saved, no_nonactive
+
+        from django.db import connection, transaction
+        cursor = connection.cursor()
+
+        no_saved = 0
+        no_created = 0
+        no_existing = 0
+        no_nonactive = 0
+
+        for single_timeseries in timeseries:
+            if not single_timeseries['active']:
+                no_nonactive += 1
+            timeseries_dict = {
+                'id': single_timeseries.get('id', None),  # Id only for existing items
+                'geo_id': single_timeseries['geolocationcache__id'],
+                'par_id': single_timeseries['parametercache__id'],
+                'mod_id': single_timeseries['modulecache__id'],
+                'tst_id': single_timeseries['timestepcache__id'],
+                'active': 'TRUE' if single_timeseries['active'] else 'FALSE',
+                'qua_id': single_timeseries['qualifiersetcache__id'] if
+                single_timeseries['qualifiersetcache__id'] else 'null',  # Can be None
+                }
+            if single_timeseries['new']:
+                #insert
+                cursor.execute("""
+INSERT INTO lizard_fewsnorm_timeseriescache (geolocationcache_id, parametercache_id, modulecache_id, timestepcache_id, active, qualifiersetcache_id) VALUES (%(geo_id)d, %(par_id)d, %(mod_id)d, %(tst_id)d, %(active)s, %(qua_id)s)
+""" % timeseries_dict)
+                no_created += 1
+            else:
+                cursor.execute("""
+UPDATE lizard_fewsnorm_timeseriescache SET geolocationcache_id = %(geo_id)d, parametercache_id = %(par_id)d, modulecache_id = %(mod_id)d, timestepcache_id = %(tst_id)d, active = %(active)s, qualifiersetcache_id = %(qua_id)s WHERE id = %(id)d
+""" % timeseries_dict)
+                no_existing += 1
+
+            no_saved += 1
+            if no_saved % 10000 == 0:
+                logger.debug('Saved %d objects.' % no_saved)
+        logger.debug('committing...')
+        transaction.commit_unless_managed()
+
+        return no_saved, no_created, no_existing, no_nonactive
+
+
 
 class TrackRecordCache(GeoObject):
     """
@@ -825,7 +946,7 @@ class FewsNormSource(models.Model):
         no_existing = 0
         no_created = 0
         no_nonactive = 0
-        logger.debug('Checking all locations...')
+        logger.debug('Checking %d locations...' % len(source_locations))
         for location in source_locations:
             new_ident = location.id[:80]
             if new_ident in locations:
@@ -863,43 +984,6 @@ class FewsNormSource(models.Model):
         logger.info('Non-active locations: %d' % no_nonactive)
         return locations
 
-        # for geo_location_cache in GeoLocationCache.objects.filter(
-        #     fews_norm_source=self):
-
-        #     geo_location_cache.active = False
-        #     geo_location_cache.save()
-        # for location in source_locations:
-        #     # logger.debug('processing location.id: %s' % location.id)
-        #     wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
-        #     params = {
-        #         'data_set': data_set,
-        #         'fews_norm_source': self,
-        #         'name': '%s' % location.name,
-        #         'shortname': '%s' % location.shortname,
-        #         'icon': '%s' % location.icon,
-        #         'tooltip': '%s' % location.tooltip,
-        #         'geo_object_group': geo_object_group,
-        #         'geometry': GEOSGeometry(
-        #             Point(wgs84_x, wgs84_y), srid=4326),
-        #         'active': True}
-        #     geo_location_cache, cr = GeoLocationCache.objects.get_or_create(
-        #         ident=location.id[:80], defaults=params)
-        #     if not cr:
-        #         for k, v in params.items():
-        #             geo_location_cache.__setattr__(k, v)
-        #         geo_location_cache.save()
-        #     if cr:
-        #         logger.info('Newly created location %s' % geo_location_cache)
-        #     locations[geo_location_cache.ident] = geo_location_cache
-        # inactive_locations = GeoLocationCache.objects.filter(
-        #     fews_norm_source=self, active=False)
-        # if inactive_locations:
-        #     logger.warning('Warning: there are inactive locations for '
-        #                    'fews_norm_source %s:' % self)
-        #     for inactive_location in inactive_locations:
-        #         logger.warning('Inactive location: %s' % inactive_location)
-        # return locations
-
     @transaction.commit_on_success
     def sync_time_series_cache(
         self, locations, parameters, modules, time_steps,
@@ -912,108 +996,76 @@ class FewsNormSource(models.Model):
 
         Note that active timeseries CAN refer to an inactive location.
         """
+        def ts_hash(ts_dict):
+            """Generate temp hash for a timeseries dict"""
+            return '%s::%s::%s::%s::%s' % (
+                ts_dict['geolocationcache__ident'],
+                ts_dict['parametercache__ident'],
+                ts_dict['modulecache__ident'],
+                ts_dict['timestepcache__ident'],
+                ts_dict.get('qualifiersetcache__ident', None))
 
         # Collect new series
         logger.debug('Reading existing series from source...')
-        series = Series.get_django_model(
-            self.database_schema_name).objects.select_related().using(
-            self.database_name).all()
+        series = list(Series.from_raw(self.database_schema_name).using(
+            self.database_name))
         # series_dict = dict([(single_series.hash(), single_series) for
         #                     single_series in series])
 
         # Current cache: fist set all to non-active
         logger.debug('Reading existing series cache...')
         time_series_cache_dict = {}
-        for single_time_series_cache in TimeSeriesCache.objects.select_related().filter(
-            geolocationcache__fews_norm_source=self):
-            single_time_series_cache.active = False
-            time_series_cache_dict[
-                single_time_series_cache.hash()] = single_time_series_cache
+        for single_time_series_cache in TimeSeriesCache.objects.filter(
+            geolocationcache__fews_norm_source=self).values(
+            'geolocationcache__ident', 'geolocationcache__id',
+            'parametercache__ident', 'parametercache__id',
+            'modulecache__ident', 'modulecache__id',
+            'timestepcache__ident', 'timestepcache__id',
+            'qualifiersetcache__ident', 'qualifiersetcache__id',
+            'id'):
+            # The idents are only needed to create the temporary
+            # hash. When creating a new object, it is sufficient to
+            # use an id only.
 
-        no_existing = 0
-        no_created = 0
-        no_nonactive = 0
-        logger.debug('Checking all series...')
+            single_time_series_cache['active'] = False
+            single_time_series_cache['new'] = False  # Custom, for TimeSeriesCache.save_raw
+            time_series_cache_dict[
+                ts_hash(single_time_series_cache)] = single_time_series_cache
+
+        no_processed = 0
+        logger.debug('Checking %d series...' % len(series))
         for single_series in series:
             series_hash = single_series.hash()
+            no_processed += 1
             if series_hash in time_series_cache_dict:
                 # Update existing
-                no_existing += 1
                 current_time_series = time_series_cache_dict[series_hash]
             else:
                 # New
-                no_created += 1
-                if single_series.qualifierset is not None:
-                    qualifier_set_id = qualifier_sets[
-                        single_series.qualifierset.id]
+                if qualifier_sets[single_series.qualifierset]:
+                    qualifier_set_id = qualifier_sets[single_series.qualifierset].id
                 else:
                     qualifier_set_id = None
-                current_time_series = TimeSeriesCache(
-                    geolocationcache=locations[
-                        single_series.location.id],
-                    parametercache=parameters[
-                        single_series.parameter.id],
-                    modulecache=modules[
-                        single_series.moduleinstance.id],
-                    timestepcache=time_steps[
-                        single_series.timestep.id],
-                    qualifiersetcache=qualifier_set_id
-                    )
-                logger.debug('New timeseries: %s' % current_time_series)
-            current_time_series.active = True
+                current_time_series = {
+                    'geolocationcache__id': locations[single_series.location].id,
+                    'parametercache__id': parameters[single_series.parameter].id,
+                    'modulecache__id': modules[single_series.moduleinstance].id,
+                    'timestepcache__id': time_steps[single_series.timestep].id,
+                    'qualifiersetcache__id': qualifier_set_id,
+                    }
+                current_time_series['new'] = True  # For TimeSeriesCache.save_raw
+            current_time_series['active'] = True
             time_series_cache_dict[series_hash] = current_time_series
+            # if no_processed % 100000 == 0:
+            #     logger.debug('# processed timeseries: %d' % no_processed)
 
-        # Save timeseries
-        logger.debug('Saving %d objects...' % len(time_series_cache_dict))
-        for time_series_cache in time_series_cache_dict.values():
-            if not time_series_cache.active:
-                no_nonactive += 1
-                logger.warning('Inactive timeseries: %s' % time_series_cache)
-            time_series_cache.save()
+        no_saved, no_created, no_existing, no_nonactive = TimeSeriesCache.save_raw_dict(
+            time_series_cache_dict.values())
 
-        logger.info('Newly created locations: %d' % no_created)
-        logger.info('Updated locations: %d' % no_existing)
-        logger.info('Non-active locations: %d' % no_nonactive)
-
-
-        # for time_series_cache in TimeSeriesCache.objects.filter(
-        #     geolocationcache__fews_norm_source=self):
-
-        #     time_series_cache.active = False
-        #     time_series_cache.save()
-
-        # for single_series in series:
-        #     if single_series.qualifierset is not None:
-        #         qualifier_set_id = qualifier_sets[
-        #             single_series.qualifierset.id]
-        #     else:
-        #         qualifier_set_id = None
-        #     time_series_cache, created = TimeSeriesCache.objects.get_or_create(
-        #         geolocationcache=locations[
-        #             single_series.location.id],
-        #         parametercache=parameters[
-        #             single_series.parameter.id],
-        #         modulecache=modules[
-        #             single_series.moduleinstance.id],
-        #         timestepcache=time_steps[
-        #             single_series.timestep.id],
-        #         qualifiersetcache=qualifier_set_id,
-        #         defaults={'active': True}
-        #         )
-        #     if created:
-        #         logger.info('Newly created timeseries %s' % time_series_cache)
-        #     else:
-        #         # A little bit faster than out of the if statement.
-        #         time_series_cache.active = True
-        #         time_series_cache.save()
-        # inactive_timeseries = TimeSeriesCache.objects.filter(
-        #     geolocationcache__fews_norm_source=self, active=False)
-        # if inactive_timeseries:
-        #     logger.warning('Warning: there are inactive timeseries for '
-        #                    'fews_norm_source %s:' % self)
-        #     for inactive_single_timeseries in inactive_timeseries:
-        #         logger.warning('Inactive timeseries: %s' %
-        #                        inactive_single_timeseries)
+        logger.info('Saved timeseries: %d' % no_saved)
+        logger.info('Newly created timeseries: %d' % no_created)
+        logger.info('Updated existing timeseries: %d' % no_existing)
+        logger.info('Non-active timeseries: %d' % no_nonactive)
 
     # @transaction.commit_on_success
     def sync_track_record_cache(self, data_set=None):

@@ -40,7 +40,7 @@ class Users(models.Model):
     name = models.CharField(max_length=64, blank=True, null=True)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'users'
+        #db_table = SCHEMA_PREFIX + u'users'
         managed = False
 
     def __unicode__(self):
@@ -58,37 +58,37 @@ class ParameterGroups(models.Model):
     displayunit = models.CharField(max_length=64)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'parametergroups'
+        #db_table = SCHEMA_PREFIX + u'parametergroups'
         managed = False
 
     def __unicode__(self):
         return u'%s' % self.id
 
 
-class FlexibleSchemaModel(object):
-    """
-    TODO: this doesn't work correctly. Replace all use with raw sqls
+# class FlexibleSchemaModel(object):
+#     """
+#     TODO: this doesn't work correctly. Replace all use with raw sqls
 
-    Create altered model using your own schemaname.
+#     Create altered model using your own schemaname.
 
-    Meta.db_table and schema_prefix must be defined when using this
-    class.
+#     Meta.db_table and schema_prefix must be defined when using this
+#     class.
 
-    """
+#     """
 
-    @classmethod
-    def get_django_model(cls, schema_prefix=''):
-        """
-        Create a django model using a custom schemaname.
-        """
-        logger.debug('model db_table %s' % cls._meta.db_table)
-        if schema_prefix and '.' not in cls._meta.db_table:
-            cls._meta.db_table = schema_prefix + u'"."' + cls._meta.db_table
-            logger.debug('Added db_table %s', cls._meta.db_table)
-        return cls
+#     @classmethod
+#     def get_django_model(cls, schema_prefix=''):
+#         """
+#         Create a django model using a custom schemaname.
+#         """
+#         logger.debug('model db_table %s' % cls._meta.db_table)
+#         if schema_prefix and '.' not in cls._meta.db_table:
+#             cls._meta.db_table = schema_prefix + u'"."' + cls._meta.db_table
+#             logger.debug('Added db_table %s', cls._meta.db_table)
+#         return cls
 
 
-class Location(models.Model, FlexibleSchemaModel):
+class Location(models.Model):
     """
     Fewsnorm Location.
     """
@@ -116,11 +116,21 @@ class Location(models.Model, FlexibleSchemaModel):
     # l_chlor = models.CharField(max_length=64)
 
     class Meta:
-        db_table = u'locations'
+        #db_table = u'locations'
         managed = False
 
     def __unicode__(self):
         return u'%s' % self.id
+
+    @classmethod
+    def from_raw(cls, schema_prefix=''):
+        """Due to schema difficulties and performance, use this function"""
+        return cls.objects.raw("""
+SELECT locationkey, id, name, shortname, description, icon, tooltip, parentlocationid,
+       parentlocationid, visibilitystarttime, visibilityendtime, x, y, z, area
+FROM
+       "%(schema_prefix)s"."locations"
+""" % {'schema_prefix': schema_prefix})
 
 
 # TODO: flexible schema_prefix
@@ -131,11 +141,12 @@ class Location(models.Model, FlexibleSchemaModel):
 #             name += schema_prefix
 #             return models.base.ModelBase.__new__(cls, name, bases, attrs)
 
-class Parameter(models.Model, FlexibleSchemaModel):
+class Parameter(models.Model):
     parameterkey = models.IntegerField(primary_key=True,
                                        db_column='parameterkey')
-    groupkey = models.ForeignKey(ParameterGroups,
-                                 db_column='groupkey')
+    # groupkey = models.ForeignKey(ParameterGroups,
+    #                              db_column='groupkey')
+    groupkey = models.CharField(max_length=64, db_column='groupkey')
     id = models.CharField(max_length=64)
     name = models.CharField(max_length=64)
     shortname = models.CharField(max_length=64)
@@ -145,11 +156,24 @@ class Parameter(models.Model, FlexibleSchemaModel):
     attributeb = models.FloatField()
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'parameters'
+        #db_table = SCHEMA_PREFIX + u'parameters'
         managed = False
 
     def __unicode__(self):
         return '%s' % self.id
+
+    @classmethod
+    def from_raw(cls, schema_prefix=''):
+        """Due to schema difficulties and performance, use this function"""
+        return cls.objects.raw("""
+SELECT par.parameterkey as parameterkey, gr.id as groupkey,
+       par.id as id, par.name as name, par.shortname as shortname,
+       par.description as description, par.valueresolution as valueresolution,
+       par.attributea as attributea, par.attributeb as attributeb
+FROM
+       "%(schema_prefix)s"."parameters" as par
+INNER JOIN "%(schema_prefix)s"."parametergroups" as gr ON (par.groupkey = gr.groupkey)
+""" % {'schema_prefix': schema_prefix})
 
 
 class Qualifiers(models.Model):
@@ -159,42 +183,62 @@ class Qualifiers(models.Model):
     description = models.CharField(max_length=64)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'qualifiers'
+        #db_table = SCHEMA_PREFIX + u'qualifiers'
         managed = False
 
     def __unicode__(self):
         return u'%s' % self.id
 
 
-class QualifierSets(models.Model, FlexibleSchemaModel):
+class QualifierSets(models.Model):
     qualifiersetkey = models.IntegerField(primary_key=True,
                                           db_column='qualifiersetkey')
     id = models.CharField(unique=True, max_length=64)
-    qualifierkey1 = models.ForeignKey(Qualifiers,
-                                      db_column='qualifierkey1',
-                                      related_name='qualifierkey1')
-    qualifierkey2 = models.ForeignKey(Qualifiers,
-                                      db_column='qualifierkey2',
-                                      related_name='qualifierkey2',
-                                      blank=True, null=True)
-    qualifierkey3 = models.ForeignKey(Qualifiers,
-                                      db_column='qualifierkey3',
-                                      related_name='qualifierkey3',
-                                      blank=True, null=True)
-    qualifierkey4 = models.ForeignKey(Qualifiers,
-                                      related_name='qualifierkey4',
-                                      db_column='qualifierkey4',
-                                      blank=True, null=True)
+    qualifierkey1 = models.CharField(max_length=64)
+    qualifierkey2 = models.CharField(max_length=64)
+    qualifierkey3 = models.CharField(max_length=64)
+    qualifierkey4 = models.CharField(max_length=64)
+    # qualifierkey1 = models.ForeignKey(Qualifiers,
+    #                                   db_column='qualifierkey1',
+    #                                   related_name='qualifierkey1')
+    # qualifierkey2 = models.ForeignKey(Qualifiers,
+    #                                   db_column='qualifierkey2',
+    #                                   related_name='qualifierkey2',
+    #                                   blank=True, null=True)
+    # qualifierkey3 = models.ForeignKey(Qualifiers,
+    #                                   db_column='qualifierkey3',
+    #                                   related_name='qualifierkey3',
+    #                                   blank=True, null=True)
+    # qualifierkey4 = models.ForeignKey(Qualifiers,
+    #                                   related_name='qualifierkey4',
+    #                                   db_column='qualifierkey4',
+    #                                   blank=True, null=True)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'qualifiersets'
+        # db_table = SCHEMA_PREFIX + u'qualifiersets'
         managed = False
 
     def __unicode__(self):
         return u'%s' % self.id
 
+    @classmethod
+    def from_raw(cls, schema_prefix=''):
+        """Due to schema difficulties and performance, use this function
+        """
+        return cls.objects.raw("""
+SELECT qs.qualifiersetkey as qualifiersetkey, qs.id as id,
+       q1.id as qualifierkey1, q2.id as qualifierkey2,
+       q3.id as qualifierkey3, q4.id as qualifierkey4
+FROM
+       "%(schema_prefix)s"."qualifiersets" as qs
+LEFT OUTER JOIN "%(schema_prefix)s"."qualifiers" as q1 ON (qs.qualifierkey1 = q1.qualifierkey)
+LEFT OUTER JOIN "%(schema_prefix)s"."qualifiers" as q2 ON (qs.qualifierkey2 = q2.qualifierkey)
+LEFT OUTER JOIN "%(schema_prefix)s"."qualifiers" as q3 ON (qs.qualifierkey3 = q3.qualifierkey)
+LEFT OUTER JOIN "%(schema_prefix)s"."qualifiers" as q4 ON (qs.qualifierkey4 = q4.qualifierkey)
+""" % {'schema_prefix': schema_prefix})
 
-class ModuleInstances(models.Model, FlexibleSchemaModel):
+
+class ModuleInstances(models.Model):
     moduleinstancekey = models.IntegerField(primary_key=True,
                                             db_column='moduleinstancekey')
     id = models.CharField(unique=True, max_length=64)
@@ -202,14 +246,24 @@ class ModuleInstances(models.Model, FlexibleSchemaModel):
     description = models.CharField(max_length=64)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'moduleinstances'
+        # db_table = SCHEMA_PREFIX + u'moduleinstances'
         managed = False
 
     def __unicode__(self):
         return u'%s' % self.id
 
+    @classmethod
+    def from_raw(cls, schema_prefix=''):
+        """Due to schema difficulties and performance, use this function
+        """
+        return cls.objects.raw("""
+SELECT moduleinstancekey, id, name, description
+FROM
+       "%(schema_prefix)s"."moduleinstances"
+""" % {'schema_prefix': schema_prefix})
 
-class Timesteps(models.Model, FlexibleSchemaModel):
+
+class Timesteps(models.Model):
     timestepkey = models.IntegerField(primary_key=True,
                                       db_column='timestepkey')
     id = models.CharField(unique=True, max_length=64)
@@ -217,11 +271,21 @@ class Timesteps(models.Model, FlexibleSchemaModel):
     #label = models.CharField(max_length=64)  # on fewsnorm-dev
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'timesteps'
+        #db_table = SCHEMA_PREFIX + u'timesteps'
         managed = False
 
     def __unicode__(self):
         return u'%s' % self.id
+
+    @classmethod
+    def from_raw(cls, schema_prefix=''):
+        """Due to schema difficulties and performance, use this function
+        """
+        return cls.objects.raw("""
+SELECT timestepkey, id
+FROM
+       "%(schema_prefix)s"."timesteps"
+""" % {'schema_prefix': schema_prefix})
 
 
 class AggregationPeriods(models.Model):
@@ -232,14 +296,14 @@ class AggregationPeriods(models.Model):
     description = models.CharField(max_length=64)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'aggregationperiods'
+        #db_table = SCHEMA_PREFIX + u'aggregationperiods'
         managed = False
 
     def __unicode__(self):
         return u'%s' % self.id
 
 
-class Series(models.Model, FlexibleSchemaModel):
+class Series(models.Model):
     """
     Due to difficulties in different schemas and databases:
 
@@ -271,7 +335,7 @@ class Series(models.Model, FlexibleSchemaModel):
     #                                       blank=True, null=True)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'timeserieskeys'
+        #db_table = SCHEMA_PREFIX + u'timeserieskeys'
         managed = False
 
     def hash(self):
@@ -306,59 +370,6 @@ INNER JOIN "%(schema_prefix)s"."timesteps" as tst ON (ts.timestepkey = tst.times
 LEFT OUTER JOIN "%(schema_prefix)s"."aggregationperiods" as agg ON (ts.aggregationperiodkey = agg.aggregationperiodkey)
 """ % {'schema_prefix': schema_prefix})
 
-    # @classmethod
-    # def get_django_model(cls, schema_prefix):
-    #     model = super(Series, cls).get_django_model(schema_prefix=schema_prefix)
-    #     model.location = models.ForeignKey(
-    #         Location.get_django_model(schema_prefix=schema_prefix),
-    #         db_column='locationkey')
-    #     # model.parameter = models.ForeignKey(
-    #     #     Parameter.get_django_model(schema_prefix=schema_prefix),
-    #     #     db_column='parameterkey')
-    #     # model.qualifierset = models.ForeignKey(
-    #     #     QualifierSets.get_django_model(schema_prefix=schema_prefix),
-    #     #     db_column='qualifiersetkey')
-    #     # model.moduleinstance = models.ForeignKey(
-    #     #     ModuleInstances.get_django_model(schema_prefix=schema_prefix),
-    #     #     db_column='moduleinstancekey',
-    #     #     blank=True, null=True)
-    #     # model.timestep = models.ForeignKey(
-    #     #     Timesteps.get_django_model(schema_prefix=schema_prefix),
-    #     #     db_column='timestepkey',
-    #     #     blank=True, null=True)
-    #     return model
-
-#     @classmethod
-#     def from_lppairs(cls, lppairs):
-#         """select series matching zipped location parameter iterable.
-#         """
-
-#         location = None
-#         for (l, p) in lppairs:
-#             try:
-#                 location = GeoLocationCache.objects.get(ident=l)
-#                 break
-#             except:
-#                 pass
-#         if location is None:
-#             return None
-
-#         db_name = location.fews_norm_source.database_name
-
-#         locations = Location.objects.using(db_name).filter(
-#             id__in=[l for (l, p) in lppairs])
-#         parameters = Parameter.objects.using(db_name).filter(
-#             id__in=[p for (l, p) in lppairs])
-
-#         l_id_to_pk = dict((l.id, l.pk) for l in locations)
-#         p_id_to_pk = dict((p.id, p.pk) for p in parameters)
-
-#         keys = tuple((l_id_to_pk[l], p_id_to_pk[p]) for (l, p) in lppairs)
-
-#         return cls.objects.raw("\
-# SELECT * FROM \"timeserieskeys\" \
-# WHERE (locationkey, parameterkey) IN %s" % (keys,)).using(db_name)
-
 
 class Event(composite.CompositePKModel):
     """
@@ -375,7 +386,7 @@ class Event(composite.CompositePKModel):
     comment = None  # not yet there
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'timeseriesvaluesandflags'
+        #db_table = SCHEMA_PREFIX + u'timeseriesvaluesandflags'
         managed = False
 
     def __unicode__(self):
@@ -435,7 +446,7 @@ class TimeseriesComments(models.Model):
     comment = models.CharField(max_length=64)
 
     class Meta:
-        db_table = SCHEMA_PREFIX + u'timeseriescomments'
+        #db_table = SCHEMA_PREFIX + u'timeseriescomments'
         managed = False
 
     def __unicode__(self):
@@ -453,9 +464,20 @@ class TimeseriesComments(models.Model):
         location = GeoLocationCache.objects.get(
             ident=series.location.id)
         db_name = location.fews_norm_source.database_name
-        return TimeseriesComments.get_django_object(
+        return TimeseriesComments.get_raw(
             schema_prefix=schema_prefix).objects.using(
             db_name).get(serieskey=series, datetime=datetime)
+
+    @classmethod
+    def from_raw(cls, schema_prefix=''):
+        """Due to schema difficulties and performance, use this function
+        TO BE TESTED
+        """
+        return cls.objects.raw("""
+SELECT serieskey, datetime, comment
+FROM
+       "%(schema_prefix)s"."timeseriescomments"
+""" % {'schema_prefix': schema_prefix})
 
 
 class TimeseriesManualEditsHistory(models.Model):
@@ -814,13 +836,9 @@ class FewsNormSource(models.Model):
         max_length=80, null=True, blank=True)
     active = models.BooleanField(default=True)
 
-    # def _empty_cache(self):
-    #     logger.debug('Empty GeoLocationCache for fewsnorm %s...', self.name)
-    #     self.geolocationcache_set.all().delete()
-
     def source_locations(self):
-        return Location.get_django_model(
-            self.database_schema_name).objects.using(self.database_name).all()
+        return list(Location.from_raw(
+            schema_prefix=self.database_schema_name).using(self.database_name))
 
     @transaction.commit_on_success
     def get_or_create_geoobjectgroup(self, user_name=None):
@@ -851,8 +869,8 @@ class FewsNormSource(models.Model):
         parameters = {}
         no_touched = 0
         no_created = 0
-        for parameter in Parameter.get_django_model(
-            self.database_schema_name).objects.using(self.database_name).all():
+        for parameter in Parameter.from_raw(
+            self.database_schema_name).using(self.database_name):
 
             parameter_cache, created = ParameterCache.objects.get_or_create(
                 ident=parameter.id,
@@ -881,8 +899,8 @@ class FewsNormSource(models.Model):
         Fill ModuleCache.
         """
         modules = {}
-        for module in ModuleInstances.get_django_model(
-            self.database_schema_name).objects.using(self.database_name).all():
+        for module in ModuleInstances.from_raw(
+            self.database_schema_name).using(self.database_name):
 
             module_cache, _ = ModuleCache.objects.get_or_create(
                 ident=module.id)
@@ -895,8 +913,8 @@ class FewsNormSource(models.Model):
         Fill TimeStepCache.
         """
         time_steps = {}
-        for time_step in Timesteps.get_django_model(
-            self.database_schema_name).objects.using(self.database_name).all():
+        for time_step in Timesteps.from_raw(
+            self.database_schema_name).using(self.database_name):
 
             time_step_cache, _ = TimeStepCache.objects.get_or_create(
                 ident=time_step.id)
@@ -909,9 +927,9 @@ class FewsNormSource(models.Model):
         Fill QualifierSetCache
         """
         qualifier_sets = {}
-        for qualifier_set in QualifierSets.get_django_model(
-            self.database_schema_name).objects.using(
-            self.database_name).all():
+        for qualifier_set in QualifierSets.from_raw(
+            self.database_schema_name).using(
+            self.database_name):
 
             qualifier_set_cache, cr = QualifierSetCache.objects.get_or_create(
                 ident=qualifier_set.id)
@@ -980,7 +998,7 @@ class FewsNormSource(models.Model):
             location.save()
 
         logger.info('Newly created locations: %d' % no_created)
-        logger.info('Updated locations: %d' % no_existing)
+        logger.info('Updated/touched locations: %d' % no_existing)
         logger.info('Non-active locations: %d' % no_nonactive)
         return locations
 

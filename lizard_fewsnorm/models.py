@@ -737,20 +737,6 @@ class TimeSeriesCache(models.Model):
         You must add an attribute 'new' to each timeseries to
         determine create or update.
         """
-        # Slow version
-        # no_saved = 0
-        # no_nonactive = 0
-        # logger.debug('Saving %d objects...' % len(timeseries))
-        # for single_timeseries in timeseries:
-        #     if not single_timeseries.active:
-        #         no_nonactive += 1
-        #         logger.warning('Inactive timeseries: %s' % single_timeseries)
-        #     single_timeseries.save()
-        #     no_saved += 1
-        #     if no_saved % 100 == 0:
-        #         logger.debug('Saved %d timeseries' % no_saved)
-        # return no_saved, no_nonactive
-
         from django.db import connection, transaction
         cursor = connection.cursor()
 
@@ -762,6 +748,9 @@ class TimeSeriesCache(models.Model):
         for single_timeseries in timeseries:
             if not single_timeseries['active']:
                 no_nonactive += 1
+            if not single_timeseries.get('changed', True):
+                # We do not have to save this object.
+                continue
             timeseries_dict = {
                 'id': single_timeseries.get('id', None),  # Id only for existing items
                 'geo_id': single_timeseries['geolocationcache__id'],
@@ -791,7 +780,6 @@ UPDATE lizard_fewsnorm_timeseriescache SET geolocationcache_id = %(geo_id)d, par
         transaction.commit_unless_managed()
 
         return no_saved, no_created, no_existing, no_nonactive
-
 
 
 class TrackRecordCache(GeoObject):
@@ -958,7 +946,9 @@ class FewsNormSource(models.Model):
         logger.debug('Reading current locations cache...')
         locations = {}
         for glc in GeoLocationCache.objects.filter(fews_norm_source=self):
-            glc.active = False
+            # glc.active = False
+            glc.changed = False  # For saving
+            glc.visited = False  # For saving
             locations[glc.ident] = glc
 
         no_existing = 0
@@ -967,16 +957,44 @@ class FewsNormSource(models.Model):
         logger.debug('Checking %d locations...' % len(source_locations))
         for location in source_locations:
             new_ident = location.id[:80]
+            wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
+            geom = GEOSGeometry(Point(wgs84_x, wgs84_y), srid=4326)
+            new_location = False
             if new_ident in locations:
                 # Update existing
                 no_existing += 1
                 current_location = locations[new_ident]
+
+                # Detect changes for saving
+                if current_location.data_set != data_set:
+                    current_location.changed = True
+                if current_location.fews_norm_source != self:
+                    current_location.changed = True
+                if current_location.name != location.name:
+                    current_location.changed = True
+                if current_location.shortname != location.shortname:
+                    current_location.changed = True
+                if current_location.icon != '%s' % location.icon:
+                    current_location.changed = True
+                if current_location.tooltip != '%s' % location.tooltip:
+                    current_location.changed = True
+                if current_location.geo_object_group != geo_object_group:
+                    current_location.changed = True
+                if current_location.geometry != geom:
+                    current_location.changed = True
+                if current_location.changed:
+                    logger.debug('Changed location: %s' % current_location)
             else:
                 # New
                 no_created += 1
                 current_location = GeoLocationCache(ident=new_ident)
+                current_location.changed = True
+                new_location = True  # For logging
+
             # (Over)write params
-            wgs84_x, wgs84_y = rd_to_wgs84(location.x, location.y)
+
+            current_location.visited = True  # For saving
+
             current_location.data_set = data_set
             current_location.fews_norm_source = self
             current_location.name = '%s' % location.name
@@ -984,22 +1002,30 @@ class FewsNormSource(models.Model):
             current_location.icon = '%s' % location.icon
             current_location.tooltip = '%s' % location.tooltip
             current_location.geo_object_group = geo_object_group
-            current_location.geometry = GEOSGeometry(
-                Point(wgs84_x, wgs84_y), srid=4326)
+            current_location.geometry = geom
             current_location.active = True
+            if new_location:
+                logger.debug('New location: %s' % current_location)
+
             locations[new_ident] = current_location
 
         # Save locations
-        logger.debug('Saving %d objects...' % len(locations))
+        logger.debug('Saving...')
+        no_saved = 0
         for location in locations.values():
-            if not location.active:
+            if not location.visited:
+                location.active = False
                 no_nonactive += 1
                 logger.warning('Inactive location: %s' % location)
-            location.save()
+                no_saved += 1
+                location.save()
+            if location.visited and location.changed:
+                no_saved += 1
+                location.save()
 
         logger.info('Newly created locations: %d' % no_created)
-        logger.info('Updated/touched locations: %d' % no_existing)
         logger.info('Non-active locations: %d' % no_nonactive)
+        logger.info('Saved locations: %d' % no_saved)
         return locations
 
     @transaction.commit_on_success
@@ -1027,10 +1053,8 @@ class FewsNormSource(models.Model):
         logger.debug('Reading existing series from source...')
         series = list(Series.from_raw(self.database_schema_name).using(
             self.database_name))
-        # series_dict = dict([(single_series.hash(), single_series) for
-        #                     single_series in series])
 
-        # Current cache: fist set all to non-active
+        # Read current cache
         logger.debug('Reading existing series cache...')
         time_series_cache_dict = {}
         for single_time_series_cache in TimeSeriesCache.objects.filter(
@@ -1045,7 +1069,8 @@ class FewsNormSource(models.Model):
             # hash. When creating a new object, it is sufficient to
             # use an id only.
 
-            single_time_series_cache['active'] = False
+            single_time_series_cache['visited'] = False  # Custom
+            single_time_series_cache['changed'] = False  # Custom, for TimeSeriesCache.save_raw
             single_time_series_cache['new'] = False  # Custom, for TimeSeriesCache.save_raw
             time_series_cache_dict[
                 ts_hash(single_time_series_cache)] = single_time_series_cache
@@ -1058,9 +1083,39 @@ class FewsNormSource(models.Model):
             if series_hash in time_series_cache_dict:
                 # Update existing
                 current_time_series = time_series_cache_dict[series_hash]
+                # Check if essential attributes have changed
+                if single_series.location != current_time_series['geolocationcache__ident']:
+                    current_time_series['changed'] = True
+                    # Ident is for consistency, it is not saved.
+                    current_time_series['geolocationcache__ident'] = single_series.location
+                    current_time_series['geolocationcache__id'] = locations[single_series.location].id
+                if single_series.parameter != current_time_series['parametercache__ident']:
+                    current_time_series['changed'] = True
+                    # Ident is for consistency, it is not saved.
+                    current_time_series['parametercache__ident'] = single_series.parameter
+                    current_time_series['parametercache__id'] = parameters[single_series.parameter].id
+                if single_series.moduleinstance != current_time_series['modulecache__ident']:
+                    current_time_series['changed'] = True
+                    # Ident is for consistency, it is not saved.
+                    current_time_series['modulecache__ident'] = single_series.moduleinstance
+                    current_time_series['modulecache__id'] = modules[single_series.moduleinstance].id
+                if single_series.timestep != current_time_series['timestepcache__ident']:
+                    current_time_series['changed'] = True
+                    # Ident is for consistency, it is not saved.
+                    current_time_series['timestepcache__ident'] = single_series.timestep
+                    current_time_series['timestepcache__id'] = time_steps[single_series.timestep].id
+                if single_series.qualifierset != current_time_series['qualifiersetcache__ident']:
+                    current_time_series['changed'] = True
+                    # Ident is for consistency, it is not saved.
+                    if single_series.qualifierset:
+                        qualifier_set_id = qualifier_sets[single_series.qualifierset].id
+                    else:
+                        qualifier_set_id = None
+                    current_time_series['qualifiersetcache__ident'] = single_series.qualifierset
+                    current_time_series['qualifiersetcache__id'] = qualifiers_set_id
             else:
                 # New
-                if qualifier_sets[single_series.qualifierset]:
+                if single_series.qualifierset:
                     qualifier_set_id = qualifier_sets[single_series.qualifierset].id
                 else:
                     qualifier_set_id = None
@@ -1070,12 +1125,20 @@ class FewsNormSource(models.Model):
                     'modulecache__id': modules[single_series.moduleinstance].id,
                     'timestepcache__id': time_steps[single_series.timestep].id,
                     'qualifiersetcache__id': qualifier_set_id,
+                    'changed': True
                     }
                 current_time_series['new'] = True  # For TimeSeriesCache.save_raw
             current_time_series['active'] = True
+            current_time_series['visited'] = True
             time_series_cache_dict[series_hash] = current_time_series
             # if no_processed % 100000 == 0:
             #     logger.debug('# processed timeseries: %d' % no_processed)
+
+        # Look for non-active time series
+        for ts_dict in time_series_cache_dict.values():
+            if not ts_dict['visited']:
+                ts_dict['active'] = False
+                ts_dict['changed'] = True
 
         no_saved, no_created, no_existing, no_nonactive = TimeSeriesCache.save_raw_dict(
             time_series_cache_dict.values())

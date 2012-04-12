@@ -10,6 +10,8 @@ Changelog of lizard-fewsnorm
 - Updated sync_fewsnorm, memory usage and performance is now
   acceptable for 300k timeseries (test set for now).
 
+- Added some fields to GeoLocationCache in admin.
+
 
 0.12 (2012-03-28)
 -----------------

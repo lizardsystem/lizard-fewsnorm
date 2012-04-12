@@ -37,7 +37,8 @@ class TimeSeriesCacheAdmin(admin.ModelAdmin):
 
 
 class GeoLocationCacheAdmin(admin.ModelAdmin):
-    list_filter = ('active', )
+    list_filter = ('active', 'data_set', 'fews_norm_source',
+                   'parameter', 'module', 'timestep', )
 
 
 admin.site.register(FewsNormSource, FewsNormSourceAdmin)

@@ -55,6 +55,7 @@ class Command(BaseCommand):
             logger.info("No databases selected. Check your database "
                         "settings and db_name (if provided) .")
         for source in sources:
+            logger.info('Updating %s...' % source)
             logger.debug(
                 'Updating ParameterCache for fewsnorm %s...', source.name)
             parameters = source.sync_parameter_cache()

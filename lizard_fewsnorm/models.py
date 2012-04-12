@@ -480,8 +480,96 @@ LEFT OUTER JOIN "%(schema_prefix)s"."timeseriescomments" as c ON (c.datetime = e
         if dt_end:
             expressions.append("e.datetime <= '%s'" % dt_end.isoformat())
         raw_query += 'WHERE ' + ' AND '.join(expressions)
-        print raw_query
+
         return cls.objects.raw(raw_query)
+
+    @classmethod
+    def agg_from_raw(cls, series, dt_start=None, dt_end=None, schema_prefix='',
+                     agg_function='avg', agg_period='year'):
+        """
+        Same as from_raw, but aggregates.
+
+        Aggregate by
+        Function: avg, sum
+        Period: year, month, day
+
+        PostgreSQL aggregating sql:
+
+        select date_part('year', datetime) as year, date_part('month',
+        datetime) as month, sum(scalarvalue) from
+        nskv00_opdb.timeseriesvaluesandflags group by year, month
+        order by year, month;
+
+        Yes, the raw queries are very ugly.
+        """
+        agg_functions = set(['avg', 'sum'])
+        agg_periods = set(['year', 'month', 'day'])
+
+        if agg_function not in agg_functions:
+            raise Exception('Series.agg_from_raw: agg_function %s not in %s' % (
+                    agg_function, agg_functions))
+        if agg_period not in agg_periods:
+            raise Exception('Series.agg_from_raw: agg_period %s not in %s' % (
+                    agg_period, agg_periods))
+
+        expressions = ['e.serieskey = %s' % series.serieskey]
+        if dt_start:
+            expressions.append("e.datetime >= '%s'" % dt_start.isoformat())
+        if dt_end:
+            expressions.append("e.datetime <= '%s'" % dt_end.isoformat())
+        where_clause = 'WHERE ' + ' AND '.join(expressions)
+
+        if agg_period == 'year':
+            raw_query = """
+SELECT
+       date_part('year', datetime) as id,
+       date_part('year', datetime) as year,
+       to_timestamp(to_char(date_part('year', datetime), 'FM9999') || ' 01 01', 'YYYY MM DD') as timestamp,
+       %(agg_function)s(scalarvalue) as value,
+       '' as comment,
+       max(e.flags) as flag
+FROM
+        "%(schema_prefix)s"."timeseriesvaluesandflags" as e
+%(where_clause)s
+GROUP BY year
+ORDER BY year;
+""" % {'agg_function': agg_function, 'schema_prefix': schema_prefix, 'where_clause': where_clause}
+        elif agg_period == 'month':
+            raw_query = """
+SELECT
+       date_part('year', datetime) as id,
+       date_part('year', datetime) as year,
+       date_part('month', datetime) as month,
+       to_timestamp(to_char(date_part('year', datetime), 'FM9999') || ' ' || to_char(date_part('month', datetime), 'FM99') || ' 01', 'YYYY MM DD') as timestamp,
+       %(agg_function)s(scalarvalue) as value,
+       '' as comment,
+       max(e.flags) as flag
+FROM
+        "%(schema_prefix)s"."timeseriesvaluesandflags" as e
+%(where_clause)s
+GROUP BY year, month
+ORDER BY year, month;
+""" % {'agg_function': agg_function, 'schema_prefix': schema_prefix, 'where_clause': where_clause}
+        elif agg_period == 'day':
+            raw_query = """
+SELECT
+       date_part('year', datetime) as id,
+       date_part('year', datetime) as year,
+       date_part('month', datetime) as month,
+       date_part('day', datetime) as day,
+       to_timestamp(to_char(date_part('year', datetime), 'FM9999') || ' ' || to_char(date_part('month', datetime), 'FM99') || ' ' || to_char(date_part('day', datetime), 'FM99'), 'YYYY MM DD') as timestamp,
+       %(agg_function)s(scalarvalue) as value,
+       '' as comment,
+       max(e.flags) as flag
+FROM
+        "%(schema_prefix)s"."timeseriesvaluesandflags" as e
+%(where_clause)s
+GROUP BY year, month, day
+ORDER BY year, month, day;
+""" % {'agg_function': agg_function, 'schema_prefix': schema_prefix, 'where_clause': where_clause}
+
+        return cls.objects.raw(raw_query)
+
 
 
 class TimeseriesComments(models.Model):

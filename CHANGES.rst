@@ -15,6 +15,8 @@ Changelog of lizard-fewsnorm
 
 - Added some fields to GeoLocationCache in admin.
 
+- Added Event.agg_from_raw: aggregate using raw query.
+
 
 0.12 (2012-03-28)
 -----------------

@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.13 (unreleased)
+0.13 (2012-04-12)
 -----------------
 
 - Changed behaviour of Event, Series (all apps that depend on these

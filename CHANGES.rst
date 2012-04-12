@@ -5,7 +5,10 @@ Changelog of lizard-fewsnorm
 0.13 (unreleased)
 -----------------
 
-- Added support for different schemas (experimental).
+- Changed behaviour of Event, Series (all apps that depend on these
+  models should be upgraded).
+
+- Added support for different schemas.
 
 - Updated sync_fewsnorm, memory usage and performance is now
   acceptable for 300k timeseries (test set for now).

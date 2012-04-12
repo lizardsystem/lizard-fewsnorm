@@ -313,6 +313,7 @@ class Series(models.Model):
                                     db_column='serieskey')
     location = models.CharField(max_length=64)
     parameter = models.CharField(max_length=64)
+    unit = models.CharField(max_length=64)
     qualifierset = models.CharField(max_length=64, blank=True, null=True)
     moduleinstance = models.CharField(max_length=64, blank=True, null=True)
     timestep = models.CharField(max_length=64, blank=True, null=True)
@@ -351,11 +352,24 @@ class Series(models.Model):
             self.moduleinstance)
 
     @classmethod
-    def from_raw(cls, schema_prefix=''):
-        return cls.objects.raw("""
+    def from_raw(cls, schema_prefix='', params={}):
+        """
+        Return series objects as described in this model.
+
+        Provide params to filter results.
+
+        Params may have the following keys:
+        - location: locations.id
+        - parameter: parameters.id
+        - moduleinstance: moduleinstances.id
+        - timestep: timesteps.id
+        - qualifierset: qualifiersets.id
+        """
+        raw_query = """
 SELECT serieskey,
        loc.id as location,
        par.id as parameter,
+       pgr.unit as unit,
        qua.id as qualifierset,
        mod.id as moduleinstance,
        tst.id as timestep ,
@@ -368,22 +382,33 @@ LEFT OUTER JOIN "%(schema_prefix)s"."qualifiersets" as qua ON (ts.qualifiersetke
 INNER JOIN "%(schema_prefix)s"."moduleinstances" as mod ON (ts.moduleinstancekey = mod.moduleinstancekey)
 INNER JOIN "%(schema_prefix)s"."timesteps" as tst ON (ts.timestepkey = tst.timestepkey)
 LEFT OUTER JOIN "%(schema_prefix)s"."aggregationperiods" as agg ON (ts.aggregationperiodkey = agg.aggregationperiodkey)
-""" % {'schema_prefix': schema_prefix})
+INNER JOIN "%(schema_prefix)s"."parametergroups" as pgr ON (par.groupkey = pgr.groupkey)
+""" % {'schema_prefix': schema_prefix}
+        if params:
+            db_fields = {'location': 'loc.id',
+                         'parameter': 'par.id',
+                         'moduleinstance': 'mod.id',
+                         'timestep': 'tst.id',
+                         'qualifierset': 'qua.id'}
+            raw_query += 'WHERE ' + ' AND '.join([
+                    "%s = '%s'" % (db_fields[a], b) for a, b in params.items()])
+        return cls.objects.raw(raw_query)
 
 
-class Event(composite.CompositePKModel):
+#class Event(composite.CompositePKModel):
+class Event(models.Model):
     """
     A single event.
 
-    Use the model Series to find out more.
+    Use from_raw to get events.
     """
-    series = models.ForeignKey(Series,
-                               primary_key=True,
-                               db_column='serieskey')
-    timestamp = models.DateTimeField(primary_key=True, db_column='datetime')
+    # series = models.ForeignKey(Series,
+    #                            primary_key=True,
+    #                            db_column='serieskey')
+    timestamp = models.DateTimeField(db_column='datetime')
     value = models.FloatField(db_column='scalarvalue')
     flag = models.IntegerField(db_column='flags')
-    comment = None  # not yet there
+    comment = models.CharField(max_length=64)
 
     class Meta:
         #db_table = SCHEMA_PREFIX + u'timeseriesvaluesandflags'
@@ -435,6 +460,28 @@ SELECT e.* FROM \"%(schema_prefix)stimeseriesvaluesandflags\" e
                 'schema_prefix': schema_prefix_,
                 'serieskey': series_set__pk,
                 'deadline': deadline__iso}).using(db_name)
+
+    @classmethod
+    def from_raw(cls, series, dt_start=None, dt_end=None,
+                 with_comments=False, schema_prefix=''):
+        """
+        Get events (with comments) from fewsnorm.
+        """
+        # We add a fake id, because the Django RawQuerySet requires it.
+        raw_query = """
+SELECT e.datetime as id, e.datetime as timestamp, e.scalarvalue as value, e.flags as flag, c.comment as comment
+FROM "%(schema_prefix)s"."timeseriesvaluesandflags" as e
+LEFT OUTER JOIN "%(schema_prefix)s"."timeseriescomments" as c ON (c.datetime = e.datetime AND c.serieskey = e.serieskey)
+""" % {'schema_prefix': schema_prefix}
+
+        expressions = ['e.serieskey = %s' % series.serieskey]
+        if dt_start:
+            expressions.append("e.datetime >= '%s'" % dt_start.isoformat())
+        if dt_end:
+            expressions.append("e.datetime <= '%s'" % dt_end.isoformat())
+        raw_query += 'WHERE ' + ' AND '.join(expressions)
+        print raw_query
+        return cls.objects.raw(raw_query)
 
 
 class TimeseriesComments(models.Model):

@@ -1311,18 +1311,30 @@ class FewsNormSource(models.Model):
 
             for g in geolocationcaches:
                 # Collect value, xpos and ypos events at this location
-                value_events = TimeSeriesCache.objects.get(
+                value_series = TimeSeriesCache.objects.get(
                     geolocationcache=g,
                     parametercache=p,
-                ).get_timeseries().values()[0].get_events()
-                xpos_events = TimeSeriesCache.objects.get(
+                )
+                value_events = Event.from_raw(
+                    value_series,
+                    schema_prefix=self.database_schema_name
+                ).using(self.database_name)
+                xpos_series = TimeSeriesCache.objects.get(
                     geolocationcache=g,
                     parametercache=xpos_cache,
-                ).get_timeseries().values()[0].get_events()
-                ypos_events = TimeSeriesCache.objects.get(
+                )
+                xpos_events = Event.from_raw(
+                    value_series,
+                    schema_prefix=self.database_schema_name
+                ).using(self.database_name)
+                ypos_series = TimeSeriesCache.objects.get(
                     geolocationcache=g,
                     parametercache=ypos_cache,
-                ).get_timeseries().values()[0].get_events()
+                )
+                ypos_events = Event.from_raw(
+                    value_series,
+                    schema_prefix=self.database_schema_name
+                ).using(self.database_name)
 
                 # Some dicts for easy matching of events by date
                 xpos_events_dict = dict([(str(e[0]), e)

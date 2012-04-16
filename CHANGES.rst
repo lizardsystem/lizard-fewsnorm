@@ -16,6 +16,8 @@ Changelog of lizard-fewsnorm
 
 - Commented out AggregationPeriods, unused.
 
+- Work towards fix for sync_track_record_cache method of FewsNormSource.
+
 
 0.13 (2012-04-12)
 -----------------

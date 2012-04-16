@@ -176,18 +176,18 @@ INNER JOIN "%(schema_prefix)s"."parametergroups" as gr ON (par.groupkey = gr.gro
 """ % {'schema_prefix': schema_prefix})
 
 
-class Qualifiers(models.Model):
-    qualifierkey = models.IntegerField(primary_key=True,
-                                       db_column='qualifierkey')
-    id = models.CharField(unique=True, max_length=64)
-    description = models.CharField(max_length=64)
+# class Qualifiers(models.Model):
+#     qualifierkey = models.IntegerField(primary_key=True,
+#                                        db_column='qualifierkey')
+#     id = models.CharField(unique=True, max_length=64)
+#     description = models.CharField(max_length=64)
 
-    class Meta:
-        #db_table = SCHEMA_PREFIX + u'qualifiers'
-        managed = False
+#     class Meta:
+#         #db_table = SCHEMA_PREFIX + u'qualifiers'
+#         managed = False
 
-    def __unicode__(self):
-        return u'%s' % self.id
+#     def __unicode__(self):
+#         return u'%s' % self.id
 
 
 class QualifierSets(models.Model):
@@ -198,21 +198,6 @@ class QualifierSets(models.Model):
     qualifierkey2 = models.CharField(max_length=64)
     qualifierkey3 = models.CharField(max_length=64)
     qualifierkey4 = models.CharField(max_length=64)
-    # qualifierkey1 = models.ForeignKey(Qualifiers,
-    #                                   db_column='qualifierkey1',
-    #                                   related_name='qualifierkey1')
-    # qualifierkey2 = models.ForeignKey(Qualifiers,
-    #                                   db_column='qualifierkey2',
-    #                                   related_name='qualifierkey2',
-    #                                   blank=True, null=True)
-    # qualifierkey3 = models.ForeignKey(Qualifiers,
-    #                                   db_column='qualifierkey3',
-    #                                   related_name='qualifierkey3',
-    #                                   blank=True, null=True)
-    # qualifierkey4 = models.ForeignKey(Qualifiers,
-    #                                   related_name='qualifierkey4',
-    #                                   db_column='qualifierkey4',
-    #                                   blank=True, null=True)
 
     class Meta:
         # db_table = SCHEMA_PREFIX + u'qualifiersets'
@@ -288,19 +273,19 @@ FROM
 """ % {'schema_prefix': schema_prefix})
 
 
-class AggregationPeriods(models.Model):
-    aggregationperiodkey = models.IntegerField(
-        primary_key=True,
-        db_column='aggregationperiodkey')
-    id = models.CharField(unique=True, max_length=64)
-    description = models.CharField(max_length=64)
+# class AggregationPeriods(models.Model):
+#     aggregationperiodkey = models.IntegerField(
+#         primary_key=True,
+#         db_column='aggregationperiodkey')
+#     id = models.CharField(unique=True, max_length=64)
+#     description = models.CharField(max_length=64)
 
-    class Meta:
-        #db_table = SCHEMA_PREFIX + u'aggregationperiods'
-        managed = False
+#     class Meta:
+#         #db_table = SCHEMA_PREFIX + u'aggregationperiods'
+#         managed = False
 
-    def __unicode__(self):
-        return u'%s' % self.id
+#     def __unicode__(self):
+#         return u'%s' % self.id
 
 
 class Series(models.Model):
@@ -437,29 +422,33 @@ class Event(models.Model):
 
         # assume the serie_set is not empty!
         first_serie = series_set[0]
-        location = GeoLocationCache.objects.get(ident=first_serie.location.id)
+        location = GeoLocationCache.objects.get(ident=first_serie.location)
         db_name = location.fews_norm_source.database_name
+        schema_prefix = location.fews_norm_source.database_schema_name
 
         series_set__pk = ','.join(tuple(str(s.pk) for s in series_set))
         deadline__iso = deadline.isoformat()
 
-        if schema_prefix:
-            schemaprefix_ = schema_prefix + '"."'
-        else:
-            schemaprefix_ = ''
         ## execute the query.
-        return cls.objects.raw("""\
-SELECT e.* FROM \"%(schema_prefix)stimeseriesvaluesandflags\" e
+        raw_query = """\
+SELECT
+  e.datetime as id, e.datetime as timestamp, e.scalarvalue as value,
+  e.flags as flag, c.comment as comment
+FROM \"%(schema_prefix)s\".\"timeseriesvaluesandflags\" e
   JOIN (SELECT serieskey, max(datetime) AS datetime
-        FROM \"%(schema_prefix)stimeseriesvaluesandflags\"
+        FROM \"%(schema_prefix)s\".\"timeseriesvaluesandflags\"
         WHERE serieskey in (%(serieskey)s)
           AND datetime < '%(deadline)s'
               GROUP BY serieskey) latest
   ON e.serieskey = latest.serieskey
-  AND e.datetime = latest.datetime""" % {
-                'schema_prefix': schema_prefix_,
+  AND e.datetime = latest.datetime
+LEFT OUTER JOIN "%(schema_prefix)s"."timeseriescomments" as c
+  ON (c.datetime = e.datetime AND c.serieskey = e.serieskey)
+""" % {
+                'schema_prefix': schema_prefix,
                 'serieskey': series_set__pk,
-                'deadline': deadline__iso}).using(db_name)
+                'deadline': deadline__iso}
+        return cls.objects.raw(raw_query).using(db_name)
 
     @classmethod
     def from_raw(cls, series, dt_start=None, dt_end=None,
@@ -570,69 +559,53 @@ ORDER BY year, month, day;
 
         return cls.objects.raw(raw_query)
 
-
-
-class TimeseriesComments(models.Model):
-    serieskey = models.ForeignKey(Series,
-                                  primary_key=True,
-                                  db_column='serieskey',
-                                  blank=True, null=True)
-    datetime = models.DateTimeField(primary_key=True)
-    comment = models.CharField(max_length=64)
-
-    class Meta:
-        #db_table = SCHEMA_PREFIX + u'timeseriescomments'
-        managed = False
-
-    def __unicode__(self):
-        return u'%s' % self.comment
-
     @classmethod
-    def filter_comment(cls, series, datetime, schema_prefix=''):
+    def time_series(cls, source, multi_series, dt_start=None, dt_end=None):
         """
-        Return comment object for given series and datetime.
+        Retrieve events from time series.
 
-        Crashes if nothing found.
-
-        Comparable with Event.filter_latest_before_deadline
+        Result is timeseries objects in a dict (loc_id, par_id).
         """
-        location = GeoLocationCache.objects.get(
-            ident=series.location.id)
-        db_name = location.fews_norm_source.database_name
-        return TimeseriesComments.get_raw(
-            schema_prefix=schema_prefix).objects.using(
-            db_name).get(serieskey=series, datetime=datetime)
+        result = {}
+        for single_series in multi_series:
+            # Fill new timeseries with events from dt_start to dt_end
+            events = Event.from_raw(
+                single_series, dt_start, dt_end,
+                schema_prefix=source.database_schema_name).using(
+                source.database_name)
 
-    @classmethod
-    def from_raw(cls, schema_prefix=''):
-        """Due to schema difficulties and performance, use this function
-        TO BE TESTED
-        """
-        return cls.objects.raw("""
-SELECT serieskey, datetime, comment
-FROM
-       "%(schema_prefix)s"."timeseriescomments"
-""" % {'schema_prefix': schema_prefix})
+            # Put the events in a Timeseries object
+            new_timeseries = timeseries.TimeSeries()
+            new_timeseries.location_id = single_series.location
+            new_timeseries.parameter_id = single_series.parameter
+            new_timeseries.time_step = single_series.timestep
+            new_timeseries.units = single_series.unit
+            for event in events:
+                new_timeseries[event.timestamp] = (
+                    event.value, event.flag, event.comment)
+
+            result[single_series.location, single_series.parameter] = new_timeseries
+        return result
 
 
-class TimeseriesManualEditsHistory(models.Model):
-    serieskey = models.ForeignKey(Series,
-                                  primary_key=True,
-                                  db_column='serieskey')
-    editdatetime = models.DateTimeField(primary_key=True)
-    datetime = models.DateTimeField()
-    userkey = models.ForeignKey(Users, db_column='userkey',
-                                blank=True, null=True)
-    scalarvalue = models.FloatField()
-    flags = models.IntegerField()
-    comments = models.CharField(max_length=64)
+# class TimeseriesManualEditsHistory(models.Model):
+#     serieskey = models.ForeignKey(Series,
+#                                   primary_key=True,
+#                                   db_column='serieskey')
+#     editdatetime = models.DateTimeField(primary_key=True)
+#     datetime = models.DateTimeField()
+#     userkey = models.ForeignKey(Users, db_column='userkey',
+#                                 blank=True, null=True)
+#     scalarvalue = models.FloatField()
+#     flags = models.IntegerField()
+#     comments = models.CharField(max_length=64)
 
-    class Meta:
-        db_table = SCHEMA_PREFIX + u'timeseriesmanualeditshistory'
-        managed = False
+#     class Meta:
+#         db_table = SCHEMA_PREFIX + u'timeseriesmanualeditshistory'
+#         managed = False
 
-    def __unicode__(self):
-        return u'%s %s' % (self.serieskey, self.datetime)
+#     def __unicode__(self):
+#         return u'%s %s' % (self.serieskey, self.datetime)
 
 
 # Managed models that are in the default database.
@@ -812,45 +785,31 @@ class TimeSeriesCache(models.Model):
         """
         Return django QuerySet of Series.
         """
-        db_name = self.geolocationcache.fews_norm_source.database_name
-        series_query = (
-            "SELECT * from \"%(schema_prefix)stimeserieskeys\" as ts, "
-            "\"%(schema_prefix)sparameters\" as p, "
-            "\"%(schema_prefix)slocations\" as l, "
-            "\"%(schema_prefix)smoduleinstances\" as m "
-            "WHERE "
-            "ts.parameterkey = p.parameterkey and "
-            "ts.locationkey = l.locationkey and "
-            "ts.moduleinstancekey = m.moduleinstancekey and "
-            "(l.id, p.id, m.id) IN "
-            "(('%(loc_id)s', '%(par_id)s', '%(mod_id)s'))" % (
-                {'schema_prefix': SCHEMA_PREFIX,
-                 'loc_id': str(self.geolocationcache.ident),
-                 'par_id': str(self.parametercache.ident),
-                 'mod_id': str(self.modulecache.ident)}))
-        return Series.objects.raw(series_query).using(db_name)
+        params = {
+            'location': self.geolocationcache.ident,
+            'parameter': self.parametercache.ident,
+            'moduleinstance': self.modulecache.ident,
+            'timestep': self.timestepcache.ident
+            }
+        if self.qualifiersetcache:
+            params['qualifierset'] = self.qualifiersetcache.ident
+        source = self.geolocationcache.fews_norm_source
+        return Series.from_raw(
+            schema_prefix=source.database_schema_name,
+            params=params).using(source.database_name)
 
     def get_latest_event(self, now=None, with_comments=False):
         """
         Return latest event for this timeseries.
 
-        TODO: improve with_comments option.
+        The with_comments option is here for backwards
+        compatibility. Comments are always returned.
         """
         if now is None:
             now = datetime.datetime.now()
-        series_set = self._series_set()
+        series = self._series_set()
         event = Event.filter_latest_before_deadline(
-            series_set, now)[0]
-        if with_comments:
-            # event.comment = 'test comment'
-            # assume the serie_set is not empty!
-            try:
-                comment = TimeseriesComments.filter_comment(
-                    series_set[0], event.timestamp)
-                event.comment = comment.comment
-            except TimeseriesComments.DoesNotExist:
-                # No comment found
-                pass
+            series, now)[0]
         return event
 
     def get_timeseries(self, dt_start=None, dt_end=None):
@@ -858,9 +817,12 @@ class TimeSeriesCache(models.Model):
         Return TimeSeries dictionary.
 
         Key is (location, parameter), Value is TimeSeries object.
+
+        TODO: update, this function probably doesn't work anymore
         """
+        source = self.geolocationcache.fews_norm_source
         series_set = self._series_set()
-        return timeseries.TimeSeries.as_dict(series_set, dt_start, dt_end)
+        return Event.time_series(source, series_set, dt_start, dt_end)
 
     @classmethod
     def save_raw_dict(cls, timeseries):

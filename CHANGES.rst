@@ -5,7 +5,16 @@ Changelog of lizard-fewsnorm
 0.14 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Fixed Event.filter_latest_before_deadline,
+  TimeSeriesCache.get_latest_event, TimeSeriesCache.get_timeseries.
+
+- Removed TimeSeriesComments, it is integrated in Event.
+
+- Removed Qualifiers, it is integrated in QualifierSets.
+
+- Commented out TimeseriesManualEditsHistory, unused.
+
+- Commented out AggregationPeriods, unused.
 
 
 0.13 (2012-04-12)

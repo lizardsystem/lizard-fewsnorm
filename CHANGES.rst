@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.14 (unreleased)
+0.14 (2012-04-16)
 -----------------
 
 - Fixed Event.filter_latest_before_deadline,

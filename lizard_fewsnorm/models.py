@@ -65,29 +65,6 @@ class ParameterGroups(models.Model):
         return u'%s' % self.id
 
 
-# class FlexibleSchemaModel(object):
-#     """
-#     TODO: this doesn't work correctly. Replace all use with raw sqls
-
-#     Create altered model using your own schemaname.
-
-#     Meta.db_table and schema_prefix must be defined when using this
-#     class.
-
-#     """
-
-#     @classmethod
-#     def get_django_model(cls, schema_prefix=''):
-#         """
-#         Create a django model using a custom schemaname.
-#         """
-#         logger.debug('model db_table %s' % cls._meta.db_table)
-#         if schema_prefix and '.' not in cls._meta.db_table:
-#             cls._meta.db_table = schema_prefix + u'"."' + cls._meta.db_table
-#             logger.debug('Added db_table %s', cls._meta.db_table)
-#         return cls
-
-
 class Location(models.Model):
     """
     Fewsnorm Location.
@@ -107,13 +84,7 @@ class Location(models.Model):
     y = models.FloatField()
     z = models.FloatField()
     area = models.FloatField()
-    #relationalocationid = models.CharField(max_length=64)
-    #relationblocationid = models.CharField(max_length=64)
-    #attributea = models.CharField(max_length=64)
-    #attributeb = models.FloatField()
-    # Temporary related locations for "waterhoogte" and "chloride"
-    # l_wathte = models.CharField(max_length=64)
-    # l_chlor = models.CharField(max_length=64)
+    related_location = models.CharField(max_length=64, null=True, blank=True)
 
     class Meta:
         #db_table = u'locations'
@@ -123,14 +94,23 @@ class Location(models.Model):
         return u'%s' % self.id
 
     @classmethod
-    def from_raw(cls, schema_prefix=''):
-        """Due to schema difficulties and performance, use this function"""
-        return cls.objects.raw("""
+    def from_raw(cls, schema_prefix='', related_location='id', ident=None):
+        """Due to schema difficulties and performance, use this function.
+
+        if you provide an id, that id will be selected
+
+        if you provide related_location, that column will be returned
+        as well.
+        """
+        raw_query = """
 SELECT locationkey, id, name, shortname, description, icon, tooltip, parentlocationid,
-       parentlocationid, visibilitystarttime, visibilityendtime, x, y, z, area
+       parentlocationid, visibilitystarttime, visibilityendtime, x, y, z, area, %(related_location)s as related_location
 FROM
        "%(schema_prefix)s"."locations"
-""" % {'schema_prefix': schema_prefix})
+""" % {'schema_prefix': schema_prefix, 'related_location': related_location}
+        if ident is not None:
+            raw_query += " WHERE id='%s'" % ident
+        return cls.objects.raw(raw_query)
 
 
 # TODO: flexible schema_prefix
@@ -380,7 +360,6 @@ INNER JOIN "%(schema_prefix)s"."parametergroups" as pgr ON (par.groupkey = pgr.g
         return cls.objects.raw(raw_query)
 
 
-#class Event(composite.CompositePKModel):
 class Event(models.Model):
     """
     A single event.
@@ -400,8 +379,7 @@ class Event(models.Model):
         managed = False
 
     def __unicode__(self):
-        return u'%s %s value=%s %s' % (
-            self.series,
+        return u'%s value=%s %s' % (
             self.timestamp,
             self.value,
             self.flag)

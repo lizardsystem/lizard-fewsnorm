@@ -5,7 +5,9 @@ Changelog of lizard-fewsnorm
 0.15 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Added related_location and ident option to Location.
+
+- Fixed Event.__unicode__.
 
 
 0.14 (2012-04-16)

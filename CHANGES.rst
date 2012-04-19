@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.15 (unreleased)
+0.15 (2012-04-19)
 -----------------
 
 - Added related_location and ident option to Location.

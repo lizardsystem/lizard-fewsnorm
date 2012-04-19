@@ -283,22 +283,6 @@ class Series(models.Model):
     moduleinstance = models.CharField(max_length=64, blank=True, null=True)
     timestep = models.CharField(max_length=64, blank=True, null=True)
     aggregationperiod = models.CharField(max_length=64, blank=True, null=True)
-    # location = models.ForeignKey(Location,
-    #                              db_column='locationkey')
-    # parameter = models.ForeignKey(Parameter,
-    #                               db_column='parameterkey')
-    # qualifierset = models.ForeignKey(QualifierSets,
-    #                                     db_column='qualifiersetkey',
-    #                                     blank=True, null=True)
-    # moduleinstance = models.ForeignKey(ModuleInstances,
-    #                                    db_column='moduleinstancekey',
-    #                                    blank=True, null=True)
-    # timestep = models.ForeignKey(Timesteps,
-    #                              db_column='timestepkey',
-    #                              blank=True, null=True)
-    # aggregationperiod = models.ForeignKey(AggregationPeriods,
-    #                                       db_column='aggregationperiodkey',
-    #                                       blank=True, null=True)
 
     class Meta:
         #db_table = SCHEMA_PREFIX + u'timeserieskeys'
@@ -1227,6 +1211,8 @@ class FewsNormSource(models.Model):
     def sync_track_record_cache(self, data_set=None):
         """
         Synchronize trackrecords
+
+        TODO: DOES NOT WORK ANYMORE
         """
         TRACKRECORD_PARAMETERS = ('BodemP.kritisch', )
         TRACKRECORD_COORDINATES = ('Xpos', 'Ypos')
@@ -1251,12 +1237,13 @@ class FewsNormSource(models.Model):
 
             for g in geolocationcaches:
                 # Collect value, xpos and ypos events at this location
-                value_series = TimeSeriesCache.objects.get(
-                    geolocationcache=g,
-                    parametercache=p,
-                )
+                value_series = Series.from_raw(
+                    schema_prefix=self.database_schema_name,
+                    params={'location': g.ident,
+                            'parameter': p.ident}
+                ).using(self.database_name)
                 value_events = Event.from_raw(
-                    value_series,
+                    value_series[0],
                     schema_prefix=self.database_schema_name
                 ).using(self.database_name)
                 xpos_series = TimeSeriesCache.objects.get(

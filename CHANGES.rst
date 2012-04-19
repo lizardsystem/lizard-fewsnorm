@@ -5,7 +5,7 @@ Changelog of lizard-fewsnorm
 0.16 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Started to fix sync_track_records (but unfinished).
 
 
 0.15 (2012-04-19)

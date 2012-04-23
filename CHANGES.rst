@@ -5,6 +5,9 @@ Changelog of lizard-fewsnorm
 0.16 (unreleased)
 -----------------
 
+- Changed behaviour of Event.time_series. The keys of time series are
+  now 3-tuples (location, parameter, unit) instead of 2-tuples.
+
 - Started to fix sync_track_records (but unfinished).
 
 

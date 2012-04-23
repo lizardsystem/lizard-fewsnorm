@@ -546,7 +546,9 @@ ORDER BY year, month, day;
                 new_timeseries[event.timestamp] = (
                     event.value, event.flag, event.comment)
 
-            result[single_series.location, single_series.parameter] = new_timeseries
+            result[single_series.location,
+                   single_series.parameter,
+                   single_series.unit] = new_timeseries
         return result
 
 
@@ -778,9 +780,7 @@ class TimeSeriesCache(models.Model):
         """
         Return TimeSeries dictionary.
 
-        Key is (location, parameter), Value is TimeSeries object.
-
-        TODO: update, this function probably doesn't work anymore
+        Key is (location, parameter, unit), Value is TimeSeries object.
         """
         source = self.geolocationcache.fews_norm_source
         series_set = self._series_set()

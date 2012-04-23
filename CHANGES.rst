@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.16 (unreleased)
+0.16 (2012-04-23)
 -----------------
 
 - Changed behaviour of Event.time_series. The keys of time series are

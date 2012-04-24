@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.17 (unreleased)
+0.17 (2012-04-24)
 -----------------
 
 - Added aggregation for quarter of year. Event.agg_from_raw.

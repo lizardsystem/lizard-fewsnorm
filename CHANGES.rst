@@ -5,7 +5,7 @@ Changelog of lizard-fewsnorm
 0.17 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Added aggregation for quarter of year. Event.agg_from_raw.
 
 
 0.16 (2012-04-23)

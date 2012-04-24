@@ -454,7 +454,7 @@ LEFT OUTER JOIN "%(schema_prefix)s"."timeseriescomments" as c ON (c.datetime = e
         Yes, the raw queries are very ugly.
         """
         agg_functions = set(['avg', 'sum'])
-        agg_periods = set(['year', 'month', 'day'])
+        agg_periods = set(['year', 'quarter', 'month', 'day'])
 
         if agg_function not in agg_functions:
             raise Exception('Series.agg_from_raw: agg_function %s not in %s' % (
@@ -484,6 +484,22 @@ FROM
 %(where_clause)s
 GROUP BY year
 ORDER BY year;
+""" % {'agg_function': agg_function, 'schema_prefix': schema_prefix, 'where_clause': where_clause}
+        elif agg_period == 'quarter':
+            raw_query = """
+SELECT
+       date_part('year', datetime) as id,
+       date_part('year', datetime) as year,
+       trunc((date_part('month', datetime) - 1) / 3) * 3 + 1 as month,
+       to_timestamp(to_char(date_part('year', datetime), 'FM9999') || ' ' || to_char(trunc((date_part('month', datetime) - 1) / 3) * 3 + 1, 'FM99') || ' 01', 'YYYY MM DD') as timestamp,
+       %(agg_function)s(scalarvalue) as value,
+       '' as comment,
+       max(e.flags) as flag
+FROM
+        "%(schema_prefix)s"."timeseriesvaluesandflags" as e
+%(where_clause)s
+GROUP BY year, month
+ORDER BY year, month;
 """ % {'agg_function': agg_function, 'schema_prefix': schema_prefix, 'where_clause': where_clause}
         elif agg_period == 'month':
             raw_query = """

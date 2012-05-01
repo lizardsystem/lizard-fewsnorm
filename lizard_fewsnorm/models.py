@@ -442,7 +442,7 @@ LEFT OUTER JOIN "%(schema_prefix)s"."timeseriescomments" as c ON (c.datetime = e
 
         Aggregate by
         Function: avg, sum
-        Period: year, month, day
+        Period: year, quarter, month, day
 
         PostgreSQL aggregating sql:
 
@@ -899,6 +899,9 @@ class FewsNormSource(models.Model):
         max_length=80, null=True, blank=True)
     active = models.BooleanField(default=True)
 
+    objects = FilteredGeoManager()
+    data_set = models.ForeignKey(DataSet, null=True, blank=True)
+
     def source_locations(self):
         return list(Location.from_raw(
             schema_prefix=self.database_schema_name).using(self.database_name))
@@ -1004,7 +1007,7 @@ class FewsNormSource(models.Model):
 
     @transaction.commit_on_success
     def sync_location_cache(
-        self, data_set=None, user_name=None):
+        self, user_name=None):
         """
         Fill GeoLocationCache.
 
@@ -1041,7 +1044,7 @@ class FewsNormSource(models.Model):
                 current_location = locations[new_ident]
 
                 # Detect changes for saving
-                if current_location.data_set != data_set:
+                if current_location.data_set != self.data_set:
                     current_location.changed = True
                 if current_location.fews_norm_source != self:
                     current_location.changed = True
@@ -1070,7 +1073,7 @@ class FewsNormSource(models.Model):
 
             current_location.visited = True  # For saving
 
-            current_location.data_set = data_set
+            current_location.data_set = self.data_set
             current_location.fews_norm_source = self
             current_location.name = '%s' % location.name
             current_location.shortname = '%s' % location.shortname

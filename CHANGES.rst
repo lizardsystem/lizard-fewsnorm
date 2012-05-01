@@ -5,7 +5,12 @@ Changelog of lizard-fewsnorm
 0.18 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Added tasks.py for celery.
+
+- Added data_set to FewsNormSource to make syncing with data sets
+  easier.
+
+- Updated sync_fewsnorm (experimental).
 
 
 0.17 (2012-04-24)

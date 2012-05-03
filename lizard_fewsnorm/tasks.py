@@ -30,10 +30,17 @@ def sync_fewsnorm(user_name=None, db_name=None):
 
     Option data_set_name
     """
-    handler = get_handler('sync_fewsnorm', user_name)
+    #logger = sync_fewsnorm.get_logger()
+
+    handler = get_handler('sync_fewsnorm_hhnk', user_name)
+    #handler = get_handler(sync_fewsnorm.id, user_name)
     logger = logging.getLogger(__name__)
     logger.addHandler(handler)
     logger.setLevel(20)
+
+    logger.info('Task name %s' % sync_fewsnorm.name)
+    logger.info('Task request.id: %s' % Task.request.id)
+    logger.info('Task request.taskset: %s' % Task.request.taskset)
 
     sources = get_sources(db_name)
     if not sources:

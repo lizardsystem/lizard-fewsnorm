@@ -17,7 +17,7 @@ class Command(BaseCommand):
     """
 
     help = ("Example: bin/django sync_fewsnorm "\
-            "--db_name=fewsnorm1")
+            "--db_name=fewsnorm1 --celery")
 
     option_list = BaseCommand.option_list + (
         make_option('--db_name',
@@ -26,8 +26,9 @@ class Command(BaseCommand):
                     default=None),
         make_option('--celery',
                     help='run the task with celery',
-                    type='str',
-                    default=None),
+                    action='store_true',
+                    dest='celery',
+                    default=False),
         )
 
     @transaction.commit_on_success

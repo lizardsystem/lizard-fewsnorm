@@ -1,6 +1,7 @@
 import logging
 
 from celery.task import task
+from celery.task import Task
 
 from lizard_task.handler import get_handler
 
@@ -32,7 +33,7 @@ def sync_fewsnorm(user_name=None, db_name=None):
     """
     #logger = sync_fewsnorm.get_logger()
 
-    handler = get_handler('sync_fewsnorm_hhnk', user_name)
+    handler = get_handler(username=user_name)
     #handler = get_handler(sync_fewsnorm.id, user_name)
     logger = logging.getLogger(__name__)
     logger.addHandler(handler)

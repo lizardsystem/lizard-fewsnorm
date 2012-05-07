@@ -11,13 +11,13 @@ long_description = '\n\n'.join([
 
 install_requires = [
     'Django',
-    'django-celery',
     'django-extensions',
     'django-nose',
     'lizard-ui >= 3.0',
     'lizard-map >= 3.2',
     'lizard-geo',
     'lizard-security',
+    'lizard-task',
     'timeseries >= 0.13',
     'pkginfo',
     'django-compositepk',

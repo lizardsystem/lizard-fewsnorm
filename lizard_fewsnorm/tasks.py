@@ -1,7 +1,6 @@
 import logging
 
 from celery.task import task
-from celery.task import Task
 
 from lizard_task.handler import get_handler
 
@@ -38,10 +37,6 @@ def sync_fewsnorm(user_name=None, db_name=None):
     logger = logging.getLogger(__name__)
     logger.addHandler(handler)
     logger.setLevel(20)
-
-    logger.info('Task name %s' % sync_fewsnorm.name)
-    logger.info('Task request.id: %s' % Task.request.id)
-    logger.info('Task request.taskset: %s' % Task.request.taskset)
 
     sources = get_sources(db_name)
     if not sources:

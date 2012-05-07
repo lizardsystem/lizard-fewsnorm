@@ -24,7 +24,7 @@ def get_sources(source=None):
 
 
 @task
-def sync_fewsnorm(user_name=None, db_name=None):
+def sync_fewsnorm(username=None, db_name=None):
     """
     The fewsnorm sync function
 
@@ -32,7 +32,7 @@ def sync_fewsnorm(user_name=None, db_name=None):
     """
     #logger = sync_fewsnorm.get_logger()
 
-    handler = get_handler(username=user_name)
+    handler = get_handler(username=username)
     #handler = get_handler(sync_fewsnorm.id, user_name)
     logger = logging.getLogger(__name__)
     logger.addHandler(handler)

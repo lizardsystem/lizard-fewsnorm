@@ -37,10 +37,12 @@ class Command(BaseCommand):
         #print data_set_name
         if options["celery"]:
             sync_fewsnorm_task.delay(
-                user_name=None,
+                username=None,
+                taskname=None,
                 db_name=options.get("db_name", None))
         else:
             sync_fewsnorm_task(
-                user_name=None,
+                username=None,
+                taskname=None,
                 db_name=options.get("db_name", None))
         # return 'started'

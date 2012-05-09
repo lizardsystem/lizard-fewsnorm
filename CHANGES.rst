@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.18 (unreleased)
+0.18 (2012-05-09)
 -----------------
 
 - Added tasks.py for celery.

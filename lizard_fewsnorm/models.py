@@ -24,7 +24,8 @@ from timeseries import timeseries
 
 
 import logging
-logger = logging.getLogger(__name__)
+FEWSNORM_LOG_NAME = __name__
+logger = logging.getLogger(FEWSNORM_LOG_NAME)
 
 
 # Note: all fewsnorm dbs are assumed to have this schema.

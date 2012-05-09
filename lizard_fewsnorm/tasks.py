@@ -5,6 +5,7 @@ from celery.task import task
 from lizard_task.handler import get_handler
 
 from lizard_fewsnorm.models import FewsNormSource
+from lizard_fewsnorm.models import FEWSNORM_LOG_NAME
 from lizard_security.models import DataSet
 
 
@@ -33,8 +34,7 @@ def sync_fewsnorm(username=None, db_name=None, taskname=None):
     #logger = sync_fewsnorm.get_logger()
 
     handler = get_handler(username=username, taskname=taskname)
-    #handler = get_handler(sync_fewsnorm.id, user_name)
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(FEWSNORM_LOG_NAME)
     logger.addHandler(handler)
     logger.setLevel(20)
 

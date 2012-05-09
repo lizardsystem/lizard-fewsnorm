@@ -10,7 +10,7 @@ Changelog of lizard-fewsnorm
 - Added data_set to FewsNormSource to make syncing with data sets
   easier.
 
-- Updated sync_fewsnorm (experimental).
+- Updated sync_fewsnorm.
 
 
 0.17 (2012-04-24)

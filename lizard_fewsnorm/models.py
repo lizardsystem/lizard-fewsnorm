@@ -1234,9 +1234,16 @@ class FewsNormSource(models.Model):
 
         TODO: DOES NOT WORK ANYMORE
         """
-        TRACKRECORD_PARAMETERS = ('BodemP.kritisch', )
-        TRACKRECORD_COORDINATES = ('Xpos', 'Ypos')
         TRACKRECORD_GEOOBJECTGROUP = 'TrackRecordCache'
+        TRACKRECORD_COORDINATES = ('Xpos', 'Ypos')
+
+        # Parametername: coordinatequalifier map. name and qualifier for the coordinates:
+        TRACKRECORD_PARAMETERS = {
+            'Ptot.bodem': 'p',
+            'PO4.bodem': 'p',
+            'OSTOF': 'ostof',
+            'WATDTE': 'watdte',
+        }
 
         # Get the first superuser for the geoobject group
         geo_object_group_user = User.objects.filter(is_superuser=True)[0]
@@ -1248,7 +1255,7 @@ class FewsNormSource(models.Model):
         )[0]
 
         parametercaches = [ParameterCache.objects.get(ident=trp)
-                           for trp in TRACKRECORD_PARAMETERS]
+                           for trp in TRACKRECORD_PARAMETERS.keys()]
         xpos_cache, ypos_cache = [ParameterCache.objects.get(ident=trp)
                                   for trp in TRACKRECORD_COORDINATES]
 
@@ -1256,39 +1263,66 @@ class FewsNormSource(models.Model):
             geolocationcaches = GeoLocationCache.objects.filter(parameter=p)
 
             for g in geolocationcaches:
-                # Collect value, xpos and ypos events at this location
-                value_series = Series.from_raw(
-                    schema_prefix=self.database_schema_name,
-                    params={'location': g.ident,
-                            'parameter': p.ident}
-                ).using(self.database_name)
-                value_events = Event.from_raw(
-                    value_series[0],
-                    schema_prefix=self.database_schema_name
-                ).using(self.database_name)
-                xpos_series = TimeSeriesCache.objects.get(
+                # Collect value, xpos and ypos events at this location.
+                value_series = TimeSeriesCache.objects.filter(
                     geolocationcache=g,
-                    parametercache=xpos_cache,
+                    parametercache=p,
                 )
-                xpos_events = Event.from_raw(
-                    value_series,
-                    schema_prefix=self.database_schema_name
-                ).using(self.database_name)
-                ypos_series = TimeSeriesCache.objects.get(
-                    geolocationcache=g,
-                    parametercache=ypos_cache,
-                )
-                ypos_events = Event.from_raw(
-                    value_series,
-                    schema_prefix=self.database_schema_name
-                ).using(self.database_name)
+                # There may be more then one timeseries for a combination
+                # Parameter / Geolocation. We put them all in a big
+                # list currently.
+                value_events = [event
+                                for series in value_series
+                                for event in (series.get_timeseries()
+                                              .values()[0].get_events())]
+
+                try:
+                    xpos_series = TimeSeriesCache.objects.get(
+                        geolocationcache=g,
+                        parametercache=xpos_cache,
+                        qualifiersetcache__ident=TRACKRECORD_PARAMETERS[p.ident],
+                    )
+                except:
+                    logger.info(
+                        'No Xpos found for parameter %s at location %s',
+                        p,
+                        g,
+                    )
+                    continue
+
+                xpos_events = (xpos_series.get_timeseries()
+                                .values()[0].get_events())
+                try:
+                    ypos_series = TimeSeriesCache.objects.get(
+                        geolocationcache=g,
+                        parametercache=ypos_cache,
+                        qualifiersetcache__ident=TRACKRECORD_PARAMETERS[p.ident],
+                    )
+                except:
+                    logger.info(
+                        'No Ypos found for parameter %s at location %s',
+                        p,
+                        g,
+                    )
+                    continue
+                ypos_events = (ypos_series.get_timeseries()
+                                .values()[0].get_events())
+
+                logger.info('OK for parameter %s (%s) at location %s (%s) - v:%s x:%s y:%s', p, p.id, g, g.id, len(value_events), len(xpos_events), len(ypos_events))
+
+                continue
+                if len(value_events) > 200:
+                    continue
 
                 # Some dicts for easy matching of events by date
+                logger.info('building xdict.')
                 xpos_events_dict = dict([(str(e[0]), e)
                                           for e in xpos_events])
+                logger.info('building ydict.')
                 ypos_events_dict = dict([(str(e[0]), e)
                                           for e in ypos_events])
 
+                logger.info('done.')
                 for value_event in value_events:
                     # Note we check if coordinates are present for a value,
                     # but not if values are present for each coordinate.

@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.19 (unreleased)
+0.19 (2012-05-29)
 -----------------
 
 - Fix trackrecords synchronization

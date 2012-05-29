@@ -885,6 +885,9 @@ class FewsNormSource(models.Model):
     """
     Define a source database for fews norm.
 
+    Use this model as basis for all kinds of operations on the data,
+    to keep things organized in a per-source way.
+        
     We're using fewsnorm database models:
     - Location
     - Parameter
@@ -1230,19 +1233,24 @@ class FewsNormSource(models.Model):
     # @transaction.commit_on_success
     def sync_track_record_cache(self, data_set=None):
         """
-        Synchronize trackrecords
+        Synchronize trackrecords.
 
-        TODO: DOES NOT WORK ANYMORE
+        Defaults to source dataset if no dataset is specified.
+
         """
+        if data_set is None:
+            data_set = self.data_set
+
+
         TRACKRECORD_GEOOBJECTGROUP = 'TrackRecordCache'
         TRACKRECORD_COORDINATES = ('Xpos', 'Ypos')
 
-        # Parametername: coordinatequalifier map. name and qualifier for the coordinates:
+        # Parametername: coordinate-qualifier map.
         TRACKRECORD_PARAMETERS = {
             'Ptot.bodem': 'p',
             'PO4.bodem': 'p',
-            'OSTOF': 'ostof',
-            'WATDTE': 'watdte',
+            # 'OSTOF': 'ostof',
+            # 'WATDTE': 'watdte', -- Many records!
         }
 
         # Get the first superuser for the geoobject group
@@ -1260,7 +1268,10 @@ class FewsNormSource(models.Model):
                                   for trp in TRACKRECORD_COORDINATES]
 
         for p in parametercaches:
-            geolocationcaches = GeoLocationCache.objects.filter(parameter=p)
+            geolocationcaches = GeoLocationCache.objects.filter(
+                parameter=p,
+                fews_norm_source=self,
+            )
 
             for g in geolocationcaches:
                 # Collect value, xpos and ypos events at this location.
@@ -1283,13 +1294,12 @@ class FewsNormSource(models.Model):
                         qualifiersetcache__ident=TRACKRECORD_PARAMETERS[p.ident],
                     )
                 except:
-                    logger.info(
-                        'No Xpos found for parameter %s at location %s',
-                        p,
-                        g,
-                    )
+                    #logger.info(
+                        #'No Xpos found for parameter %s at location %s',
+                        #p,
+                        #g,
+                    #)
                     continue
-
                 xpos_events = (xpos_series.get_timeseries()
                                 .values()[0].get_events())
                 try:
@@ -1299,30 +1309,26 @@ class FewsNormSource(models.Model):
                         qualifiersetcache__ident=TRACKRECORD_PARAMETERS[p.ident],
                     )
                 except:
-                    logger.info(
-                        'No Ypos found for parameter %s at location %s',
-                        p,
-                        g,
-                    )
+                    #logger.info(
+                        #'No Ypos found for parameter %s at location %s',
+                        #p,
+                        #g,
+                    #)
                     continue
                 ypos_events = (ypos_series.get_timeseries()
                                 .values()[0].get_events())
 
                 logger.info('OK for parameter %s (%s) at location %s (%s) - v:%s x:%s y:%s', p, p.id, g, g.id, len(value_events), len(xpos_events), len(ypos_events))
 
-                continue
                 if len(value_events) > 200:
                     continue
 
                 # Some dicts for easy matching of events by date
-                logger.info('building xdict.')
                 xpos_events_dict = dict([(str(e[0]), e)
                                           for e in xpos_events])
-                logger.info('building ydict.')
                 ypos_events_dict = dict([(str(e[0]), e)
                                           for e in ypos_events])
 
-                logger.info('done.')
                 for value_event in value_events:
                     # Note we check if coordinates are present for a value,
                     # but not if values are present for each coordinate.

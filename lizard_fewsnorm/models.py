@@ -1230,7 +1230,7 @@ class FewsNormSource(models.Model):
         logger.info('Updated existing timeseries: %d' % no_existing)
         logger.info('Non-active timeseries: %d' % no_nonactive)
 
-    # @transaction.commit_on_success
+    @transaction.commit_on_success
     def sync_track_record_cache(self, data_set=None):
         """
         Synchronize trackrecords.
@@ -1351,6 +1351,79 @@ class FewsNormSource(models.Model):
                             'module': None,
                             'geo_object_group': geo_object_group,
                             'geometry': geometry,
+                            'datetime': value_event[0],
+                            'value': value_event[1][0],
+                        }
+                        TrackRecordCache.objects.get_or_create(
+                            **track_record_cache_kwargs)
+        return None
+
+    @transaction.commit_on_success
+    def sync_aqmad(self, data_set=None):
+        """
+        Synchronize aqmad scores.
+        """
+        if data_set is None:
+            data_set = self.data_set
+
+        AQMAD_GEOOBJECTGROUP = 'AqmadCache'
+
+        # Get the first superuser for the geoobject group
+        geo_object_group_user = User.objects.filter(is_superuser=True)[0]
+
+        geo_object_group = GeoObjectGroup.objects.get_or_create(
+            name=AQMAD_GEOOBJECTGROUP,
+            slug=slugify(AQMAD_GEOOBJECTGROUP),
+            defaults = {'created_by': geo_object_group_user}
+        )[0]
+
+        AQMAD_PARAMETERS = [
+            'Ptot.z-score.water',
+        ]
+
+        parametercaches = [ParameterCache.objects.get(ident=aqmad_ident)
+                           for aqmad_ident in AQMAD_PARAMETERS]
+
+        nptot = len(parametercaches)
+        for np, p in enumerate(parametercaches):
+            geolocationcaches = GeoLocationCache.objects.filter(
+                parameter=p,
+                fews_norm_source=self,
+            )
+
+            ngtot = len(geolocationcaches)
+            for ng, g in enumerate(geolocationcaches):
+
+                logger.info(
+                    'Processing location %s/%s for parameter %s/%s',
+                    ng + 1, ngtot, np + 1, nptot,
+                )
+                # Collect value, xpos and ypos events at this location.
+                value_series = TimeSeriesCache.objects.filter(
+                    geolocationcache=g,
+                    parametercache=p,
+                )
+                logger.info(g)
+                # There may be more then one timeseries for a combination
+                # Parameter / Geolocation. We put them all in a big
+                # list currently.
+                value_events = [event
+                                for series in value_series
+                                for event in (series.get_timeseries()
+                                              .values()[0].get_events())]
+
+                for value_event in value_events:
+                    # Note we check if coordinates are present for a value,
+                    # but not if values are present for each coordinate.
+
+                        track_record_cache_kwargs = {
+                            'data_set': data_set,
+                            'fews_norm_source': self,
+                            'parameter': p,
+                            'location': g,
+                            'module': None,
+                            'geo_object_group': geo_object_group,
+                            'geometry': g.geometry,
                             'datetime': value_event[0],
                             'value': value_event[1][0],
                         }

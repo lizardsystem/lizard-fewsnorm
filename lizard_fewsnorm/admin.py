@@ -20,6 +20,8 @@ class TimeSeriesCacheAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'active', 'geolocationcache',
                     'parametercache', 'modulecache', 'timestepcache', )
 
+class TrackRecordCacheAdmin(admin.ModelAdmin):
+    list_filter = ('parameter', )
 
 class GeoLocationCacheAdmin(admin.ModelAdmin):
     list_filter = ('active', 'data_set', 'fews_norm_source',
@@ -32,5 +34,5 @@ admin.site.register(ModuleCache)
 admin.site.register(ParameterCache)
 admin.site.register(QualifierSetCache)
 admin.site.register(TimeStepCache)
-admin.site.register(TrackRecordCache)
+admin.site.register(TrackRecordCache, TrackRecordCacheAdmin)
 admin.site.register(TimeSeriesCache, TimeSeriesCacheAdmin)

@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.20 (unreleased)
+0.20 (2012-05-31)
 -----------------
 
 - Add aqmad caching.

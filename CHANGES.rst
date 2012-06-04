@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.21 (unreleased)
+0.21 (2012-06-04)
 -----------------
 
 - Fix bug in sync_aqmad crashing on out-of-sync timeseries.

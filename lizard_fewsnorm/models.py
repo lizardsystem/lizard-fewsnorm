@@ -1403,14 +1403,17 @@ class FewsNormSource(models.Model):
                     geolocationcache=g,
                     parametercache=p,
                 )
-                logger.info(g)
                 # There may be more then one timeseries for a combination
                 # Parameter / Geolocation. We put them all in a big
                 # list currently.
-                value_events = [event
+                timeseries = [timeseries
                                 for series in value_series
-                                for event in (series.get_timeseries()
-                                              .values()[0].get_events())]
+                                for timeseries in (
+                                    series.get_timeseries().values())]
+
+                value_events = [event
+                                for series in timeseries
+                                for event in series.get_events()]
 
                 for value_event in value_events:
                     # Note we check if coordinates are present for a value,

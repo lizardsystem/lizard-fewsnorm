@@ -5,7 +5,7 @@ Changelog of lizard-fewsnorm
 0.23 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Remove list function around raw query in sync_fewsnorm.
 
 
 0.22 (2012-06-11)

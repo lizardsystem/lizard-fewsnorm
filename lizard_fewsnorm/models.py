@@ -1127,10 +1127,10 @@ class FewsNormSource(models.Model):
 
         # Collect new series
         logger.debug('Reading existing series from source...')
-        series = list(Series.from_raw(
+        series = Series.from_raw(
             self.database_schema_name,
             params={'parameter': current_parameter.ident},
-        ).using(self.database_name))
+        ).using(self.database_name)
 
         # Read current cache
         logger.debug('Reading existing series cache...')

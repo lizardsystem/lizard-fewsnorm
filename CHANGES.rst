@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
-0.22 (unreleased)
+0.22 (2012-06-11)
 -----------------
 
 - Rewrite sync_time_series_cache to sync timeseries on a per-parameter basis,

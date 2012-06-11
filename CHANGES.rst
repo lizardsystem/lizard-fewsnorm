@@ -5,7 +5,8 @@ Changelog of lizard-fewsnorm
 0.22 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Rewrite sync_time_series_cache to sync timeseries on a per-parameter basis,
+  to reduce memory consumption.
 
 
 0.21 (2012-06-04)

@@ -1110,17 +1110,11 @@ class FewsNormSource(models.Model):
         logger.info('Saved locations: %d' % no_saved)
         return locations
 
-    @transaction.commit_on_success
-    def sync_time_series_cache(
+    def _sync_time_series_cache_by_parameter(
         self, locations, parameters, modules, time_steps,
-        qualifier_sets, data_set_name=None):
+        qualifier_sets, current_parameter, data_set_name=None):
         """
-        Synchronize the time series cache with the source.
-
-        Inactivates all existing entries, then re-enable all
-        occurrences that are present in the source.
-
-        Note that active timeseries CAN refer to an inactive location.
+        Perform sync_time_series_cache for a single parameter.
         """
         def ts_hash(ts_dict):
             """Generate temp hash for a timeseries dict"""
@@ -1133,14 +1127,18 @@ class FewsNormSource(models.Model):
 
         # Collect new series
         logger.debug('Reading existing series from source...')
-        series = list(Series.from_raw(self.database_schema_name).using(
-            self.database_name))
+        series = list(Series.from_raw(
+            self.database_schema_name,
+            params={'parameter': current_parameter.ident},
+        ).using(self.database_name))
 
         # Read current cache
         logger.debug('Reading existing series cache...')
         time_series_cache_dict = {}
         for single_time_series_cache in TimeSeriesCache.objects.filter(
-            geolocationcache__fews_norm_source=self).values(
+            geolocationcache__fews_norm_source=self,
+            parametercache=current_parameter,
+        ).values(
             'geolocationcache__ident', 'geolocationcache__id',
             'parametercache__ident', 'parametercache__id',
             'modulecache__ident', 'modulecache__id',
@@ -1158,7 +1156,7 @@ class FewsNormSource(models.Model):
                 ts_hash(single_time_series_cache)] = single_time_series_cache
 
         no_processed = 0
-        logger.debug('Checking %d series...' % len(series))
+        # logger.debug('Checking %d series...' % len(series))
         for single_series in series:
             series_hash = single_series.hash()
             no_processed += 1
@@ -1213,8 +1211,6 @@ class FewsNormSource(models.Model):
             current_time_series['active'] = True
             current_time_series['visited'] = True
             time_series_cache_dict[series_hash] = current_time_series
-            # if no_processed % 100000 == 0:
-            #     logger.debug('# processed timeseries: %d' % no_processed)
 
         # Look for non-active time series
         for ts_dict in time_series_cache_dict.values():
@@ -1225,10 +1221,54 @@ class FewsNormSource(models.Model):
         no_saved, no_created, no_existing, no_nonactive = TimeSeriesCache.save_raw_dict(
             time_series_cache_dict.values())
 
-        logger.info('Saved timeseries: %d' % no_saved)
-        logger.info('Newly created timeseries: %d' % no_created)
-        logger.info('Updated existing timeseries: %d' % no_existing)
-        logger.info('Non-active timeseries: %d' % no_nonactive)
+        return {
+            'no_saved': no_saved,
+            'no_created': no_created,
+            'no_existing': no_existing,
+            'no_nonactive': no_nonactive,
+            'no_processed': no_processed,
+        }
+
+
+    @transaction.commit_on_success
+    def sync_time_series_cache(
+        self, locations, parameters, modules, time_steps,
+        qualifier_sets, data_set_name=None):
+        """
+        Synchronize the time series cache with the source.
+
+        Inactivates all existing entries, then re-enable all
+        occurrences that are present in the source.
+
+        Note that active timeseries CAN refer to an inactive location.
+        """
+        outcomes = {}
+
+        # Going to do it per parameter
+        for p in parameters.values():
+            partial_outcomes = self._sync_time_series_cache_by_parameter(
+                locations=locations,
+                parameters=parameters,
+                modules=modules,
+                time_steps=time_steps,
+                qualifier_sets=qualifier_sets,
+                current_parameter=p
+                )
+
+            for k in partial_outcomes.keys():
+                if k in outcomes:
+                    outcomes[k] += partial_outcomes[k]
+                else:
+                    outcomes[k] = partial_outcomes[k]
+
+            logger.info('Processing timeseries for parameter: %s', p)
+
+        if outcomes:
+            logger.info('Processed timeseries: %d' % outcomes['no_processed'])
+            logger.info('Saved timeseries: %d' % outcomes['no_saved'])
+            logger.info('Newly created timeseries: %d' % outcomes['no_created'])
+            logger.info('Updated existing timeseries: %d' % outcomes['no_existing'])
+            logger.info('Non-active timeseries: %d' % outcomes['no_nonactive'])
 
     @transaction.commit_on_success
     def sync_track_record_cache(self, data_set=None):

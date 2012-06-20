@@ -1473,6 +1473,46 @@ class FewsNormSource(models.Model):
                         TrackRecordCache.objects.get_or_create(
                             **track_record_cache_kwargs)
         return None
+    
+    @transaction.commit_on_success
+    def sync_aqmad2(self, data_set=None):
+        """
+        Synchronize aqmad scores.
+        """
+        import django
+
+        format_params = 4 * (self.database_schema_name, )
+        query = """
+            SELECT 
+              val.serieskey,
+              val.datetime,
+              val.scalarvalue,
+              val.flags,
+              locations.id,
+              par.id
+            FROM 
+              %s.timeserieskeys "key", 
+              %s.timeseriesvaluesandflags val, 
+              %s.parameters par, 
+              %s.locations
+            WHERE 
+              "key".serieskey = val.serieskey AND
+              par.parameterkey = "key".parameterkey AND
+              locations.locationkey = "key".locationkey AND
+              par.id = %%s
+            LIMIT 10
+        """ % format_params
+
+        aqmad_parameter = 'Ptot.z-score.water'
+        query_params = (aqmad_parameter, )
+        cursor = django.db.connections[self.database_name].cursor()
+        # import ipdb; ipdb.set_trace() 
+        cursor.execute(query, query_params)
+        print cursor.fetchone()
+        # And than some way to quickly update, or truncate and insert,
+        # maybe using a cursor as well.
+        return None
+        
 
     def __unicode__(self):
         return '%s' % (self.name)

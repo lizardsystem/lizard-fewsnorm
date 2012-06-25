@@ -22,8 +22,9 @@ from lizard_security.models import DataSet
 
 from timeseries import timeseries
 
-
 import logging
+import django
+
 FEWSNORM_LOG_NAME = __name__
 logger = logging.getLogger(FEWSNORM_LOG_NAME)
 
@@ -1472,46 +1473,70 @@ class FewsNormSource(models.Model):
                         }
                         TrackRecordCache.objects.get_or_create(
                             **track_record_cache_kwargs)
-        return None
+
     
     @transaction.commit_on_success
     def sync_aqmad2(self, data_set=None):
         """
         Synchronize aqmad scores.
         """
-        import django
+        AQMAD_PARAMETERS = (
+            'Ptot.z-score.water',
+        )
 
-        format_params = 4 * (self.database_schema_name, )
-        query = """
+        read_query = """
             SELECT 
-              val.serieskey,
               val.datetime,
               val.scalarvalue,
-              val.flags,
               locations.id,
               par.id
             FROM 
-              %s.timeserieskeys "key", 
-              %s.timeseriesvaluesandflags val, 
-              %s.parameters par, 
-              %s.locations
+              %(schema)s.timeserieskeys "key", 
+              %(schema)s.timeseriesvaluesandflags val, 
+              %(schema)s.parameters par, 
+              %(schema)s.locations
             WHERE 
               "key".serieskey = val.serieskey AND
               par.parameterkey = "key".parameterkey AND
               locations.locationkey = "key".locationkey AND
-              par.id = %%s
+              par.id = %%(parameter)s
             LIMIT 10
-        """ % format_params
+        """ % {'schema': self.database_schema_name}
 
-        aqmad_parameter = 'Ptot.z-score.water'
-        query_params = (aqmad_parameter, )
-        cursor = django.db.connections[self.database_name].cursor()
-        # import ipdb; ipdb.set_trace() 
-        cursor.execute(query, query_params)
-        print cursor.fetchone()
-        # And than some way to quickly update, or truncate and insert,
-        # maybe using a cursor as well.
-        return None
+        write_query = """
+        """
+        
+        write_cursor = django.db.connections['default'].cursor()
+
+        # For now we just delete the whole stuff, later on we work on the update.
+        TrackRecordCache.objects.filter(
+            parameter__ident__in=AQMAD_PARAMETERS,
+        ).delete()
+
+        for p in AQMAD_PARAMETERS:
+
+            read_cursor = django.db.connections[self.database_name].cursor()
+            # import ipdb; ipdb.set_trace() 
+            read_cursor.execute(read_query, {'parameter': p})
+            for data in read_cursor:
+                print data
+                # Gather:
+                            #track_record_cache_kwargs = {
+                                #'data_set': data_set,
+                                #'fews_norm_source': self,
+                                #'parameter': p,
+                                #'location': g,
+                                #'module': None,
+                                #'geo_object_group': geo_object_group,
+                                #'geometry': g.geometry,
+                                #'datetime': value_event[0],
+                                #'value': value_event[1][0],
+                            #}
+
+            # And than some way to quickly update, or truncate and insert,
+            # maybe using a cursor as well.
+
+        transaction.set_dirty()
         
 
     def __unicode__(self):

@@ -9,6 +9,8 @@ Changelog of lizard-fewsnorm
 
 - Added a commet to time_series method of Event model.
 
+- Pep8 corrections.
+
 
 0.22.1 (2012-06-11)
 -------------------

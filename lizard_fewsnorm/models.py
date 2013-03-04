@@ -8,9 +8,6 @@ from django.template.defaultfilters import slugify
 from django.contrib.gis.geos import GEOSGeometry
 from django.db import transaction
 from django.contrib.gis.geos import Point
-#from django.conf import settings
-
-from composite_pk import composite
 
 from lizard_geo.models import GeoObject
 from lizard_geo.models import GeoObjectGroup
@@ -767,12 +764,10 @@ class TimeSeriesCache(models.Model):
         """
         Return django QuerySet of Series.
         """
-        params = {
-            'location': self.geolocationcache.ident,
-            'parameter': self.parametercache.ident,
-            'moduleinstance': self.modulecache.ident,
-            'timestep': self.timestepcache.ident
-            }
+        params = {'location': self.geolocationcache.ident,
+                  'parameter': self.parametercache.ident,
+                  'moduleinstance': self.modulecache.ident,
+                  'timestep': self.timestepcache.ident}
         if self.qualifiersetcache:
             params['qualifierset'] = self.qualifiersetcache.ident
         source = self.geolocationcache.fews_norm_source
@@ -836,8 +831,7 @@ class TimeSeriesCache(models.Model):
                 'tst_id': single_timeseries['timestepcache__id'],
                 'active': 'TRUE' if single_timeseries['active'] else 'FALSE',
                 'qua_id': single_timeseries['qualifiersetcache__id'] if
-                single_timeseries['qualifiersetcache__id'] else 'null',  # Can be None
-                }
+                single_timeseries['qualifiersetcache__id'] else 'null'}  # Can be None
             if single_timeseries['new']:
                 #insert
                 cursor.execute("""
@@ -888,7 +882,7 @@ class FewsNormSource(models.Model):
 
     Use this model as basis for all kinds of operations on the data,
     to keep things organized in a per-source way.
-        
+
     We're using fewsnorm database models:
     - Location
     - Parameter
@@ -1193,7 +1187,7 @@ class FewsNormSource(models.Model):
                     else:
                         qualifier_set_id = None
                     current_time_series['qualifiersetcache__ident'] = single_series.qualifierset
-                    current_time_series['qualifiersetcache__id'] = qualifiers_set_id
+                    current_time_series['qualifiersetcache__id'] = qualifier_set_id
             else:
                 # New
                 if single_series.qualifierset:
@@ -1229,7 +1223,6 @@ class FewsNormSource(models.Model):
             'no_nonactive': no_nonactive,
             'no_processed': no_processed,
         }
-
 
     @transaction.commit_on_success
     def sync_time_series_cache(
@@ -1282,7 +1275,6 @@ class FewsNormSource(models.Model):
         if data_set is None:
             data_set = self.data_set
 
-
         TRACKRECORD_GEOOBJECTGROUP = 'TrackRecordCache'
         TRACKRECORD_COORDINATES = ('Xpos', 'Ypos')
 
@@ -1300,7 +1292,7 @@ class FewsNormSource(models.Model):
         geo_object_group = GeoObjectGroup.objects.get_or_create(
             name=TRACKRECORD_GEOOBJECTGROUP,
             slug=slugify(TRACKRECORD_GEOOBJECTGROUP),
-            defaults = {'created_by': geo_object_group_user}
+            defaults={'created_by': geo_object_group_user}
         )[0]
 
         parametercaches = [ParameterCache.objects.get(ident=trp)
@@ -1359,7 +1351,9 @@ class FewsNormSource(models.Model):
                 ypos_events = (ypos_series.get_timeseries()
                                 .values()[0].get_events())
 
-                logger.info('OK for parameter %s (%s) at location %s (%s) - v:%s x:%s y:%s', p, p.id, g, g.id, len(value_events), len(xpos_events), len(ypos_events))
+                logger.info('OK for parameter %s (%s) at location %s (%s) - v:%s x:%s y:%s',
+                            p, p.id, g, g.id,
+                            len(value_events), len(xpos_events), len(ypos_events))
 
                 if len(value_events) > 200:
                     continue
@@ -1415,7 +1409,7 @@ class FewsNormSource(models.Model):
         geo_object_group = GeoObjectGroup.objects.get_or_create(
             name=AQMAD_GEOOBJECTGROUP,
             slug=slugify(AQMAD_GEOOBJECTGROUP),
-            defaults = {'created_by': geo_object_group_user}
+            defaults={'created_by': geo_object_group_user}
         )[0]
 
         AQMAD_PARAMETERS = [
@@ -1474,7 +1468,6 @@ class FewsNormSource(models.Model):
                         TrackRecordCache.objects.get_or_create(
                             **track_record_cache_kwargs)
 
-    
     @transaction.commit_on_success
     def sync_aqmad2(self, data_set=None):
         """
@@ -1485,17 +1478,17 @@ class FewsNormSource(models.Model):
         )
 
         read_query = """
-            SELECT 
+            SELECT
               val.datetime,
               val.scalarvalue,
               locations.id,
               par.id
-            FROM 
-              %(schema)s.timeserieskeys "key", 
-              %(schema)s.timeseriesvaluesandflags val, 
-              %(schema)s.parameters par, 
+            FROM
+              %(schema)s.timeserieskeys "key",
+              %(schema)s.timeseriesvaluesandflags val,
+              %(schema)s.parameters par,
               %(schema)s.locations
-            WHERE 
+            WHERE
               "key".serieskey = val.serieskey AND
               par.parameterkey = "key".parameterkey AND
               locations.locationkey = "key".locationkey AND
@@ -1503,12 +1496,9 @@ class FewsNormSource(models.Model):
             LIMIT 10
         """ % {'schema': self.database_schema_name}
 
-        write_query = """
-        """
-        
         write_cursor = django.db.connections['default'].cursor()
 
-        # For now we just delete the whole stuff, later on we work on the update.
+        # For now we just del the whole stuff, later on we work on the update.
         TrackRecordCache.objects.filter(
             parameter__ident__in=AQMAD_PARAMETERS,
         ).delete()
@@ -1516,28 +1506,13 @@ class FewsNormSource(models.Model):
         for p in AQMAD_PARAMETERS:
 
             read_cursor = django.db.connections[self.database_name].cursor()
-            # import ipdb; ipdb.set_trace() 
+            # import ipdb; ipdb.set_trace()
             read_cursor.execute(read_query, {'parameter': p})
-            for data in read_cursor:
-                print data
-                # Gather:
-                            #track_record_cache_kwargs = {
-                                #'data_set': data_set,
-                                #'fews_norm_source': self,
-                                #'parameter': p,
-                                #'location': g,
-                                #'module': None,
-                                #'geo_object_group': geo_object_group,
-                                #'geometry': g.geometry,
-                                #'datetime': value_event[0],
-                                #'value': value_event[1][0],
-                            #}
 
             # And than some way to quickly update, or truncate and insert,
             # maybe using a cursor as well.
 
         transaction.set_dirty()
-        
 
     def __unicode__(self):
         return '%s' % (self.name)

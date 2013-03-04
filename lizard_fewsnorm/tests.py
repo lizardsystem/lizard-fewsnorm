@@ -15,16 +15,6 @@ class AdapterTest(TestCase):
         self.user = User(username='buildout', password='buildout')
         self.user.save()
 
-    # def synchronize_cache_test(self):
-    #     """How to test without fewsnorm database?"""
-    #     parameters = self.source_db.synchronize_parameter_cache()
-    #     modules = self.source_db.synchronize_module_cache()
-    #     self.source_db.synchronize_location_cache(
-    #         self.user.username,
-    #         parameters, modules)
-    #     locations = self.source_db.source_locations()
-    #     self.assertNotEqual(len(locations), 0)
-
     def test_get_or_create_geoobjectgroup(self):
         group = self.source_db.get_or_create_geoobjectgroup(self.user.username)
         self.assertEquals(isinstance(group, GeoObjectGroup), True)

@@ -11,6 +11,8 @@ Changelog of lizard-fewsnorm
 
 - Pep8 corrections.
 
+- Pinned kgs 3.1.20 due djangorestframework update. 
+
 
 0.22.1 (2012-06-11)
 -------------------

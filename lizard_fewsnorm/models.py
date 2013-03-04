@@ -563,7 +563,7 @@ ORDER BY year, month, day;
             for event in events:
                 new_timeseries[event.timestamp] = (
                     event.value, event.flag, event.comment)
-
+            # The key has to be unique but it isn't
             result[single_series.location,
                    single_series.parameter,
                    single_series.unit] = new_timeseries

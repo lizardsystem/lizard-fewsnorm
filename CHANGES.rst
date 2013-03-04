@@ -7,6 +7,8 @@ Changelog of lizard-fewsnorm
 
 - Add part of faster sync_aqmad method.
 
+- Added a commet to time_series method of Event model.
+
 
 0.22.1 (2012-06-11)
 -------------------

@@ -2,7 +2,7 @@ Changelog of lizard-fewsnorm
 ===================================================
 
 
- (2013-03-04)
+0.22.1 (unreleased)
 --------------
 
 - Add part of faster sync_aqmad method.

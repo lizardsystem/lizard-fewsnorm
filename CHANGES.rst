@@ -5,12 +5,6 @@ Changelog of lizard-fewsnorm
 0.22.2 (unreleased)
 -------------------
 
-- Nothing changed yet.
-
-
-0.22.1 (2013-03-05)
--------------------
-
 - Add part of faster sync_aqmad method.
 
 - Added a commet to time_series method of Event model.
